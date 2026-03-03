@@ -25,7 +25,9 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:100%}
   body{font-family:"Inter",sans-serif;background:var(--bg);color:var(--text-primary);transition:background .25s,color .25s}
-  .widget{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px 20px;width:100%;box-shadow:var(--shadow);transition:background .25s,border-color .25s}
+  html,body{height:100%}
+  .widget{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px 20px;width:100%;height:100%;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:background .25s,border-color .25s}
+  .treemap-wrap{flex:1;min-height:0;}
   .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
   .header-left{display:flex;flex-direction:column;gap:2px}
   .eyebrow{font-size:10.5px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
@@ -344,12 +346,11 @@ function drawCanvas(){
   if(!wrap.clientWidth) return;
   const dpr=window.devicePixelRatio||1;
   const W=wrap.clientWidth;
-  const H=Math.round(W*0.56);
-  if(canvas._lastW!==W){
-    wrap.style.height=H+"px";
+  const H=wrap.clientHeight||Math.round(W*0.56);
+  if(canvas._lastW!==W||canvas._lastH!==H){
     canvas.width=W*dpr;canvas.height=H*dpr;
     canvas.style.width=W+"px";canvas.style.height=H+"px";
-    canvas._lastW=W;
+    canvas._lastW=W;canvas._lastH=H;
     cachedBox=null; // invalidate box cache on resize
     spCanvas=null;  // invalidate spotlight cache
   }
@@ -474,7 +475,7 @@ function render(fromWeek){
 function setWeek(w){const from=week;week=w;hov=null;cachedBox=null;render(from);}
 function toggleDark(){dark=!dark;spCanvas=null;document.documentElement.setAttribute("data-theme",dark?"dark":"");render();}
 window.addEventListener("resize",()=>{
-  const c=document.getElementById("canvas");c._lastW=0;cachedBox=null;spCanvas=null;drawCanvas();
+  const c=document.getElementById("canvas");c._lastW=0;c._lastH=0;cachedBox=null;spCanvas=null;drawCanvas();
 });
 render();
 </script>
