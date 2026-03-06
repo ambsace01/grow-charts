@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freight Carrier Rank Changes</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f4f6f8;--surface:#fff;--surface2:#f9fafb;--border:#e3e7ed;
+    --text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;
+    --green:#1e8a4a;--green-bg:#dcfce7;--red:#c0392b;--red-bg:#fee2e2;
+    --toggle-bg:#d1d5db;--toggle-knob:#fff;
+    --shadow:0 1px 6px rgba(0,0,0,.08),0 4px 20px rgba(0,0,0,.04);
+    --rank-active-bg:#1a73e8;--rank-active-text:#fff;--rank-inactive:#6b7280;
+    --chart-bg:#f8fafc;--chart-border:#dce3eb;
+  }
+  [data-theme="dark"] {
+    --bg:#0d1117;--surface:#161b27;--surface2:#1e2533;--border:#2e3a4e;
+    --text-primary:#e8edf5;--text-secondary:#b0bdd0;--text-muted:#6b7f99;
+    --green:#4ade80;--green-bg:#0c2b1c;--red:#fc8181;--red-bg:#2d1214;
+    --toggle-bg:#2e3a4e;--toggle-knob:#e8edf5;
+    --shadow:0 1px 8px rgba(0,0,0,.5);
+    --rank-active-bg:#4f93f5;--rank-active-text:#0d1117;--rank-inactive:#94a3b8;
+    --chart-bg:#0f1520;--chart-border:#1e2a3a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%}
+  body{font-family:"Inter",sans-serif;background:var(--bg);color:var(--text-primary);transition:background .25s,color .25s}
+  .widget{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px 16px;width:100%;height:100%;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:background .25s,border-color .25s}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-shrink:0}
+  .header-left{display:flex;flex-direction:column;gap:2px}
+  .eyebrow{font-size:10.5px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+  .title-row{display:flex;align-items:baseline;gap:12px}
+  .title{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:-.02em}
+  .header-right{display:flex;align-items:center;gap:14px}
+  .dm-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;opacity:.6;transition:opacity .15s;user-select:none;padding:2px 4px}
+  .dm-toggle:hover{opacity:1}
+  .dm-icon{font-size:10px;color:var(--text-secondary);display:flex;align-items:center;width:12px;justify-content:center}
+  .dm-track{width:28px;height:15px;background:var(--toggle-bg);border-radius:8px;position:relative;transition:background .2s;flex-shrink:0}
+  .dm-knob{width:11px;height:11px;background:var(--toggle-knob);border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  [data-theme="dark"] .dm-knob{transform:translateX(13px)}
+  .controls-row{display:flex;align-items:center;margin-top:6px;margin-bottom:2px;flex-shrink:0}
+  .rank-toggle{display:flex;gap:0;flex-shrink:0}
+  .rank-btn{font-size:11px;font-weight:500;padding:5px 14px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--rank-inactive);transition:all .16s;font-family:"Inter",sans-serif}
+  .rank-btn:first-child{border-radius:6px 0 0 6px}
+  .rank-btn:last-child{border-radius:0 6px 6px 0}
+  .rank-btn:not(:first-child){border-left:none}
+  .rank-btn.active{background:var(--rank-active-bg);color:var(--rank-active-text);border-color:var(--rank-active-bg);font-weight:600}
+  .line-legend{flex:1;display:flex;align-items:center;justify-content:center;gap:16px}
+  .line-legend .leg-item{display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:500;color:var(--text-muted)}
+  .line-legend svg{color:var(--text-secondary);flex-shrink:0}
+  .divider{height:1px;background:var(--border);margin:8px 0;flex-shrink:0}
+  .chart-wrap{position:relative;width:100%;flex:1;min-height:0;overflow:hidden;border-radius:8px;border:1px solid var(--chart-border);background:var(--chart-bg)}
+  canvas{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<div class="widget">
+  <div class="header">
+    <div class="header-left">
+      <span class="eyebrow">Hantover Inc. &middot; Freight</span>
+      <div class="title-row"><span class="title">Carrier Rank Changes</span></div>
+    </div>
+    <div class="header-right">
+      <div class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">
+        <span class="dm-icon">&#9728;</span>
+        <div class="dm-track"><div class="dm-knob"></div></div>
+        <span class="dm-icon">&#9790;</span>
+      </div>
+    </div>
+  </div>
+  <div class="controls-row">
+    <div class="rank-toggle">
+      <button class="rank-btn active" onclick="setMethod('paid')">Total Paid</button>
+      <button class="rank-btn" onclick="setMethod('bills')">Total Bills</button>
+      <button class="rank-btn" onclick="setMethod('avg_cost')">Avg Cost / Shipment</button>
+    </div>
+    <div class="line-legend">
+      <div class="leg-item"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span>Active all weeks</span></div>
+      <div class="leg-item"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.5" stroke-linecap="round"/></svg><span>Active, rank shifted</span></div>
+      <div class="leg-item"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="4 4" stroke-linecap="round"/></svg><span>Inactive week(s)</span></div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="chart-wrap" id="wrap"><canvas id="canvas"></canvas></div>
+</div>
+<script>
+const WEEKS=["2-16","2-23","3-2"],MAX_RANK=20;
+const DATA={"2-16":{"AACT":{"name":"AAA Cooper Transp.","bills":1,"paid":107.36,"avg_cost":107.36},"AVRT":{"name":"Averitt Express","bills":5,"paid":2403.30,"avg_cost":480.66},"CD585":{"name":"Cross Country Frt","bills":16,"paid":5628.59,"avg_cost":351.79},"CNWY":{"name":"Con-Way Freight","bills":16,"paid":5691.02,"avg_cost":355.69},"DAFG":{"name":"Dayton Freight","bills":23,"paid":3388.80,"avg_cost":147.34},"DOHR":{"name":"Dohrn Transfer","bills":9,"paid":1447.11,"avg_cost":160.79},"DTAF":{"name":"Data Freight","bills":10,"paid":16181.32,"avg_cost":1618.13},"EXLA":{"name":"Estes Express","bills":4,"paid":1001.81,"avg_cost":250.45},"FEC*":{"name":"FedEx ERS EDI","bills":42,"paid":64252.69,"avg_cost":1529.83},"FXFE":{"name":"FedEx Freight Priority","bills":6,"paid":1902.18,"avg_cost":317.03},"FXNL":{"name":"FedEx Freight Economy","bills":58,"paid":11906.15,"avg_cost":205.28},"MGUL":{"name":"Magnum LTL","bills":15,"paid":2948.04,"avg_cost":196.54},"NUMK":{"name":"Numark Transport","bills":20,"paid":7369.04,"avg_cost":368.45},"RLCA":{"name":"R&L Carriers","bills":115,"paid":25784.88,"avg_cost":224.22},"SAIA":{"name":"Saia Motor Freight","bills":32,"paid":9614.49,"avg_cost":300.45},"SEFL":{"name":"Southeastern Frt","bills":15,"paid":1637.71,"avg_cost":109.18},"SPAJ1":{"name":"Span Alaska","bills":3,"paid":737.00,"avg_cost":245.67},"TMBM":{"name":"T.E.A.M.S.","bills":5,"paid":2483.25,"avg_cost":496.65},"UPS*":{"name":"UPS EDI","bills":82,"paid":3083.64,"avg_cost":37.60},"USRD":{"name":"US Road Freight","bills":3,"paid":415.33,"avg_cost":138.44}},"2-23":{"AVRT":{"name":"Averitt Express","bills":8,"paid":2170.23,"avg_cost":271.28},"CD585":{"name":"Cross Country Frt","bills":18,"paid":4090.62,"avg_cost":227.26},"CNWY":{"name":"Con-Way Freight","bills":18,"paid":4889.63,"avg_cost":271.65},"DAFG":{"name":"Dayton Freight","bills":16,"paid":2810.37,"avg_cost":175.65},"DOHR":{"name":"Dohrn Transfer","bills":12,"paid":2640.00,"avg_cost":220.00},"DTAF":{"name":"Data Freight","bills":9,"paid":10528.38,"avg_cost":1169.82},"DYLT":{"name":"Daylight Transport","bills":1,"paid":209.44,"avg_cost":209.44},"EXLA":{"name":"Estes Express","bills":2,"paid":353.08,"avg_cost":176.54},"FEC":{"name":"FedEx Express","bills":1,"paid":780.25,"avg_cost":780.25},"FEC*":{"name":"FedEx ERS EDI","bills":38,"paid":72939.79,"avg_cost":1919.47},"FXFE":{"name":"FedEx Freight Priority","bills":16,"paid":3541.34,"avg_cost":221.33},"FXNL":{"name":"FedEx Freight Economy","bills":51,"paid":11593.38,"avg_cost":227.32},"MGUL":{"name":"Magnum LTL","bills":12,"paid":1365.38,"avg_cost":113.78},"NUMK":{"name":"Numark Transport","bills":8,"paid":879.38,"avg_cost":109.92},"RLCA":{"name":"R&L Carriers","bills":74,"paid":19893.00,"avg_cost":268.82},"SAIA":{"name":"Saia Motor Freight","bills":16,"paid":8206.74,"avg_cost":512.92},"SEFL":{"name":"Southeastern Frt","bills":17,"paid":2700.60,"avg_cost":158.86},"TMBM":{"name":"T.E.A.M.S.","bills":12,"paid":8235.63,"avg_cost":686.30},"UPGF":{"name":"TForce Freight","bills":2,"paid":622.18,"avg_cost":311.09},"UPS*":{"name":"UPS EDI","bills":25,"paid":3325.80,"avg_cost":133.03}},"3-2":{"AVRT":{"name":"Averitt Express","bills":4,"paid":1218.39,"avg_cost":304.60},"CD585":{"name":"Cross Country Frt","bills":11,"paid":2144.66,"avg_cost":194.97},"CNWY":{"name":"Con-Way Freight","bills":16,"paid":6887.48,"avg_cost":430.47},"DAFG":{"name":"Dayton Freight","bills":22,"paid":3044.27,"avg_cost":138.38},"DOHR":{"name":"Dohrn Transfer","bills":10,"paid":1031.29,"avg_cost":103.13},"DTAF":{"name":"Data Freight","bills":7,"paid":8207.50,"avg_cost":1172.50},"DYLT":{"name":"Daylight Transport","bills":2,"paid":576.29,"avg_cost":288.14},"EXLA":{"name":"Estes Express","bills":2,"paid":318.57,"avg_cost":159.28},"FEC*":{"name":"FedEx ERS EDI","bills":45,"paid":71839.42,"avg_cost":1596.43},"FXFE":{"name":"FedEx Freight Priority","bills":16,"paid":3426.33,"avg_cost":214.15},"FXNL":{"name":"FedEx Freight Economy","bills":54,"paid":10952.77,"avg_cost":202.83},"MGUL":{"name":"Magnum LTL","bills":17,"paid":2505.67,"avg_cost":147.39},"NUMK":{"name":"Numark Transport","bills":13,"paid":1626.26,"avg_cost":125.10},"RLCA":{"name":"R&L Carriers","bills":91,"paid":25082.02,"avg_cost":275.63},"SAIA":{"name":"Saia Motor Freight","bills":13,"paid":3149.61,"avg_cost":242.28},"SEFL":{"name":"Southeastern Frt","bills":23,"paid":3698.82,"avg_cost":160.82},"TMBM":{"name":"T.E.A.M.S.","bills":6,"paid":5647.30,"avg_cost":941.22},"UC402":{"name":"UPS Supply Chain","bills":1,"paid":0.00,"avg_cost":0.00},"UPGF":{"name":"TForce Freight","bills":4,"paid":3291.10,"avg_cost":822.77},"UPS*":{"name":"UPS EDI","bills":9,"paid":3141.03,"avg_cost":349.00},"USRD":{"name":"US Road Freight","bills":3,"paid":405.62,"avg_cost":135.21}}};
+const PAL_L=["#1a73e8","#d93025","#0f9d58","#f4a623","#9c27b0","#00acc1","#e53935","#1565c0","#2e7d32","#ef6c00","#6a1b9a","#00838f","#d84315","#1e88e5","#388e3c","#ff8f00","#8e24aa","#00897b","#c62828","#0288d1","#ad1457","#4e342e","#00695c","#37474f"];
+const PAL_D=["#60a5fa","#f87171","#4ade80","#fbbf24","#c084fc","#22d3ee","#fb7185","#38bdf8","#86efac","#fcd34d","#d8b4fe","#67e8f9","#fca5a5","#7dd3fc","#a7f3d0","#fde68a","#e9d5ff","#5eead4","#f9a8d4","#d4a574","#2dd4bf","#94a3b8","#a78bfa","#fbbf24"];
+const CARRIER_COLORS={"FEC*":0,"RLCA":1,"DTAF":2,"FXNL":3,"SAIA":4,"CNWY":5,"TMBM":6,"NUMK":7,"SEFL":8,"CD585":9,"FXFE":10,"DAFG":11,"UPGF":12,"UPS*":13,"MGUL":14,"AVRT":15,"DOHR":16,"EXLA":17,"FEC":18,"SPAJ1":19,"DYLT":20,"USRD":21,"AACT":22,"UC402":23};
+
+let method="paid",dark=false,hovKey=null,pinnedKey=null;
+let animPrev=null,animProgress=1,animFrame=null;
+let cardPos=null,dragging=false,dragOff={x:0,y:0};
+
+function getName(cid){for(const wk of["3-2","2-23","2-16"])if(DATA[wk][cid])return DATA[wk][cid].name;return cid;}
+function getRanks(m){const ranks={};for(const wk of WEEKS){const e=Object.entries(DATA[wk]).filter(([,d])=>d[m]!=null);e.sort((a,b)=>b[1][m]-a[1][m]||(a[0]<b[0]?-1:a[0]>b[0]?1:0));ranks[wk]={};e.forEach(([c],i)=>{ranks[wk][c]=i+1;});}return ranks;}
+function getTop20(ranks){const s=new Set();for(const wk of WEEKS)for(const[c,r]of Object.entries(ranks[wk]))if(r<=MAX_RANK)s.add(c);return[...s];}
+function getCI(cid){return CARRIER_COLORS[cid]!=null?CARRIER_COLORS[cid]%PAL_L.length:PAL_L.length-1;}
+function fmtV(cid,m){const d=DATA[WEEKS[2]][cid]||DATA[WEEKS[1]][cid]||DATA[WEEKS[0]][cid]||{};return m==="paid"?"$"+(d.paid||0).toLocaleString("en-US",{maximumFractionDigits:0}):m==="bills"?(d.bills||0)+" bills":"$"+(d.avg_cost||0).toFixed(2)+"/ship";}
+function displayKey(){return pinnedKey||hovKey;}
+function isPrimary(cid){return cid===pinnedKey||(cid===hovKey&&!pinnedKey);}
+function isSecondary(cid){return pinnedKey&&cid===hovKey&&cid!==pinnedKey;}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function drawCanvas(){
+  const cv=document.getElementById("canvas"),wr=document.getElementById("wrap");
+  if(!wr.clientWidth||!wr.clientHeight)return;
+  const dpr=window.devicePixelRatio||1,W=wr.clientWidth,H=wr.clientHeight;
+  if(cv._lw!==W||cv._lh!==H){cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+"px";cv.style.height=H+"px";cv._lw=W;cv._lh=H;}
+  const c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  const ranks=getRanks(method),prevRanks=animPrev?getRanks(animPrev):null,t=animProgress;
+  const cars=getTop20(ranks),p=dark?PAL_D:PAL_L;
+  const L=80,R=110,T=44,B=12,cW=W-L-R,cH=H-T-B;
+  const colX=WEEKS.map((_,i)=>L+i*(cW/(WEEKS.length-1)));
+  // yR: rank position — this is where lines and labels anchor
+  function yR(rank){return T+(rank-1)/(MAX_RANK-1)*cH;}
+  function yRA(cid,wk){
+    const r=ranks[wk]?ranks[wk][cid]:null;
+    if(!prevRanks||t>=1)return r!=null?yR(r):null;
+    const pr=prevRanks[wk]?prevRanks[wk][cid]:null;
+    if(r!=null&&pr!=null)return lerp(yR(pr),yR(r),t);
+    return r!=null?yR(r):null;
+  }
+
+  // Week headers
+  WEEKS.forEach((wk,i)=>{const tw=52,th=22;c.fillStyle=dark?"rgba(96,165,250,0.15)":"rgba(26,115,232,0.08)";c.beginPath();c.roundRect(colX[i]-tw/2,6,tw,th,6);c.fill();c.textAlign="center";c.textBaseline="middle";c.font="700 11px Inter,sans-serif";c.fillStyle=dark?"#93c5fd":"#1a73e8";c.fillText("W"+wk,colX[i],17);});
+  // Column lines
+  c.strokeStyle=dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.1)";c.lineWidth=1;
+  WEEKS.forEach((_,i)=>{c.beginPath();c.moveTo(colX[i],T);c.lineTo(colX[i],T+cH);c.stroke();});
+
+  const hasAny=pinnedKey||hovKey;
+  const dots=[];
+
+  // Pre-compute carrier points once for all passes
+  const carrierPts={};
+  for(const cid of cars){
+    const pts=[];
+    for(let wi=0;wi<WEEKS.length;wi++){const y=yRA(cid,WEEKS[wi]),r=ranks[WEEKS[wi]]?ranks[WEEKS[wi]][cid]:null;if(y!=null&&r!=null&&r<=MAX_RANK)pts.push({wi,x:colX[wi],y,rank:r});}
+    if(pts.length)carrierPts[cid]=pts;
+  }
+
+  // Draw carriers in THREE PASSES: background first, then highlighted on top
+  function drawCarrier(cid){
+    const pts=carrierPts[cid];
+    if(!pts)return;
+    const ci=getCI(cid),color=p[ci%p.length],isPri=isPrimary(cid),isSec=isSecondary(cid);
+
+    // Primary glow
+    if(isPri&&pts.length>1){
+      c.strokeStyle=color;c.lineWidth=dark?18:14;c.globalAlpha=dark?0.2:0.1;c.lineCap="round";c.lineJoin="round";
+      c.beginPath();c.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++){const pv=pts[i-1],cu=pts[i],cx=(pv.x+cu.x)/2;c.bezierCurveTo(cx,pv.y,cx,cu.y,cu.x,cu.y);}c.stroke();
+      if(dark){c.lineWidth=8;c.globalAlpha=0.3;c.beginPath();c.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++){const pv=pts[i-1],cu=pts[i],cx=(pv.x+cu.x)/2;c.bezierCurveTo(cx,pv.y,cx,cu.y,cu.x,cu.y);}c.stroke();}
+    }
+    // Secondary edge glow
+    if(isSec&&pts.length>1){
+      c.strokeStyle=color;c.lineCap="round";c.lineJoin="round";c.shadowColor=color;c.shadowBlur=dark?12:6;
+      c.lineWidth=dark?6:5;c.globalAlpha=dark?0.25:0.15;
+      c.beginPath();c.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++){const pv=pts[i-1],cu=pts[i],cx=(pv.x+cu.x)/2;c.bezierCurveTo(cx,pv.y,cx,cu.y,cu.x,cu.y);}c.stroke();c.shadowBlur=0;
+    }
+    // Main line
+    c.strokeStyle=color;c.lineWidth=isPri?5:hasAny?1.8:2.5;
+    c.globalAlpha=isPri?1:isSec?0.18:hasAny?(dark?0.25:0.2):(dark?0.65:0.6);
+    c.lineCap="round";c.lineJoin="round";
+    if(isPri){c.shadowColor=color;c.shadowBlur=dark?14:8;}
+    if(pts.length>1){c.beginPath();c.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++){const pv=pts[i-1],cu=pts[i],cx=(pv.x+cu.x)/2;c.bezierCurveTo(cx,pv.y,cx,cu.y,cu.x,cu.y);}c.stroke();}
+    c.shadowBlur=0;
+    // Dashed extensions
+    const f0=pts[0].wi,fL=pts[pts.length-1].wi;
+    c.strokeStyle=color;c.setLineDash([4,4]);c.lineWidth=isPri?2.5:1.5;
+    c.globalAlpha=isPri?0.5:isSec?0.18:hasAny?(dark?0.2:0.15):(dark?0.45:0.4);
+    if(f0>0){c.beginPath();c.moveTo(colX[f0-1],pts[0].y);c.lineTo(pts[0].x,pts[0].y);c.stroke();}
+    if(fL<WEEKS.length-1){c.beginPath();c.moveTo(pts[pts.length-1].x,pts[pts.length-1].y);c.lineTo(colX[fL+1],pts[pts.length-1].y);c.stroke();}
+    c.setLineDash([]);
+    // Dots
+    c.globalAlpha=isPri?1:isSec?0.35:hasAny?(dark?0.3:0.25):(dark?0.8:0.7);
+    for(const pt of pts){
+      const dr=isPri?7:3.5;
+      if(isPri){c.fillStyle=dark?"#0f1520":"#fff";c.beginPath();c.arc(pt.x,pt.y,dr+3.5,0,Math.PI*2);c.fill();if(dark){c.shadowColor=color;c.shadowBlur=12;}c.strokeStyle=color;c.lineWidth=3;c.beginPath();c.arc(pt.x,pt.y,dr+3.5,0,Math.PI*2);c.stroke();c.shadowBlur=0;}
+      else if(isSec){c.globalAlpha=1;c.shadowColor=color;c.shadowBlur=dark?8:4;c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();c.arc(pt.x,pt.y,4,0,Math.PI*2);c.stroke();c.shadowBlur=0;c.globalAlpha=0.25;}
+      c.fillStyle=color;c.beginPath();c.arc(pt.x,pt.y,dr,0,Math.PI*2);c.fill();
+      dots.push({cid,x:pt.x,y:pt.y});
+    }
+    c.globalAlpha=1;
+  }
+
+  // PASS 1: Background carriers (not primary, not secondary)
+  for(const cid of cars){if(!isPrimary(cid)&&!isSecondary(cid))drawCarrier(cid);}
+  // PASS 2: Secondary (if any)
+  for(const cid of cars){if(isSecondary(cid))drawCarrier(cid);}
+  // PASS 3: Primary (always on top)
+  for(const cid of cars){if(isPrimary(cid))drawCarrier(cid);}
+
+  // Labels — at true rank Y positions, with sub-rank tie-breaking matching band order
+  function drawLabels(side){
+    const items=[];
+    for(const cid of cars){
+      const pts=[];
+      for(let wi=0;wi<WEEKS.length;wi++){const r=ranks[WEEKS[wi]]?ranks[WEEKS[wi]][cid]:null;if(r!=null&&r<=MAX_RANK)pts.push({wi,y:yR(r),rank:r});}
+      if(!pts.length)continue;
+      const pt=side==="left"?pts[0]:pts[pts.length-1];
+      items.push({cid,y:pt.y,sub:pt.wi,color:p[getCI(cid)%p.length]});
+    }
+    items.sort((a,b)=>a.y!==b.y?a.y-b.y:a.sub-b.sub);
+    const xPos=side==="left"?L-14:colX[2]+14;
+    const align=side==="left"?"right":"left";
+    c.textAlign=align;c.textBaseline="middle";
+    // Collect highlighted Y positions for collision suppression on both sides
+    const highlightedYs=[];
+    for(const lb of items){
+      if(isPrimary(lb.cid)||isSecondary(lb.cid)) highlightedYs.push(lb.y);
+    }
+    for(const lb of items){
+      const isPri=isPrimary(lb.cid),isSec=isSecondary(lb.cid);
+      const highlighted=isPri||isSec;
+      if(side==="right"&&highlighted){
+        c.globalAlpha=isPri?1:0.5;
+        c.fillStyle=lb.color;
+        const d=DATA[WEEKS[2]][lb.cid]||DATA[WEEKS[1]][lb.cid]||DATA[WEEKS[0]][lb.cid]||{};
+        if(method==="avg_cost"){
+          c.font="700 11px Inter,sans-serif";
+          c.fillText("$"+(d.avg_cost||0).toFixed(2),xPos,lb.y-6);
+          c.font="500 9px Inter,sans-serif";
+          c.fillText("per ship",xPos,lb.y+7);
+        } else if(method==="paid"){
+          c.font="700 11px Inter,sans-serif";
+          c.fillText("$"+(d.paid||0).toLocaleString("en-US",{maximumFractionDigits:0}),xPos,lb.y);
+        } else {
+          c.font="700 11px Inter,sans-serif";
+          c.fillText((d.bills||0)+" bills",xPos,lb.y);
+        }
+      } else if(!highlighted){
+        // Suppress if within 18px of any highlighted carrier's position on this side
+        const tooClose=highlightedYs.some(hy=>Math.abs(lb.y-hy)<18);
+        if(!tooClose){
+          c.globalAlpha=0.6;
+          c.font="600 9.5px Inter,sans-serif";
+          c.fillStyle=dark?"#94a3b8":"#4b5563";
+          c.fillText(lb.cid,xPos,lb.y);
+        }
+      } else {
+        // Left side highlighted — show carrier ID in carrier color
+        c.globalAlpha=isPri?1:0.5;
+        c.font=isPri?"700 11px Inter,sans-serif":"600 10px Inter,sans-serif";
+        c.fillStyle=lb.color;
+        c.fillText(lb.cid,xPos,lb.y);
+      }
+    }
+    c.globalAlpha=1;
+  }
+  drawLabels("left");
+  drawLabels("right");
+
+  // Info card
+  const dk=displayKey();
+  if(dk){
+    const cid=dk,ci=getCI(cid),color=p[ci%p.length];
+    const bw=310,bh=235,autoBx=W-R-bw-14,autoBy=T+2;
+    const bx=cardPos?cardPos.x:autoBx,by=cardPos?cardPos.y:autoBy;
+    cv._cardRect={x:bx,y:by,w:bw,h:bh};
+    c.shadowColor=dark?"rgba(0,0,0,0.7)":"rgba(0,0,0,0.15)";c.shadowBlur=24;c.shadowOffsetY=4;
+    c.fillStyle=dark?"#1e2533":"#fff";c.beginPath();c.roundRect(bx,by,bw,bh,10);c.fill();
+    c.shadowBlur=0;c.shadowOffsetY=0;
+    c.strokeStyle=dark?"#3a4860":"#c8d0da";c.lineWidth=1;c.beginPath();c.roundRect(bx+.5,by+.5,bw-1,bh-1,10);c.stroke();
+    if(dark){c.shadowColor=color;c.shadowBlur=8;}
+    c.fillStyle=color;c.beginPath();c.roundRect(bx,by,5,bh,{upperLeft:10,lowerLeft:10,upperRight:0,lowerRight:0});c.fill();c.shadowBlur=0;
+    const tx=bx+24,ty=by+20;
+    c.textAlign="left";c.textBaseline="top";c.font="700 28px Inter,sans-serif";c.fillStyle=color;c.fillText(cid,tx,ty);
+    c.font="500 13px Inter,sans-serif";c.fillStyle=dark?"#d0ddf0":"#4b5563";c.fillText(getName(cid),tx,ty+34);
+    c.strokeStyle=dark?"#2e3a4e":"#e0e4ea";c.lineWidth=1;c.globalAlpha=0.6;c.beginPath();c.moveTo(tx,ty+58);c.lineTo(bx+bw-22,ty+58);c.stroke();c.globalAlpha=1;
+    if(pinnedKey===cid){c.font="500 9px Inter,sans-serif";c.fillStyle=dark?"#6b7f99":"#9ca3af";c.fillText("\uD83D\uDCCC pinned",bx+bw-65,ty+4);}
+    c.font="400 9px Inter,sans-serif";c.fillStyle=dark?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.12)";c.textAlign="center";c.fillText("\u2261 drag",bx+bw/2,by+bh-12);c.textAlign="left";
+    let ry=ty+72;
+    for(let wi=0;wi<WEEKS.length;wi++){
+      const wk=WEEKS[wi],rank=ranks[wk][cid],d=DATA[wk][cid],val=d?d[method]:null;
+      c.font="600 12px Inter,sans-serif";c.fillStyle=dark?"#c8d8f0":"#5a6577";c.fillText("W"+wk,tx,ry);
+      if(rank!=null&&rank<=MAX_RANK){const bt="#"+rank;c.font="700 14px Inter,sans-serif";const bW=c.measureText(bt).width+14;c.fillStyle=dark?"rgba(96,165,250,0.15)":"rgba(26,115,232,0.1)";c.beginPath();c.roundRect(tx+52,ry-4,bW,22,5);c.fill();c.fillStyle=color;c.fillText(bt,tx+59,ry);}
+      else{c.font="500 12px Inter,sans-serif";c.fillStyle=dark?"#6b7f99":"#9ca3af";c.fillText("\u2014",tx+59,ry);}
+      if(val!=null){c.font="600 12px Inter,sans-serif";c.fillStyle=dark?"#f0f4ff":"#111827";const vs=method==="paid"?"$"+val.toLocaleString("en-US",{maximumFractionDigits:0}):method==="bills"?val+" bills":"$"+val.toFixed(2);c.fillText(vs,tx+125,ry);}
+      if(wi>0){const pR=ranks[WEEKS[wi-1]][cid];if(rank!=null&&pR!=null){const df=pR-rank;if(df!==0){const ar=df>0?"\u25B2":"\u25BC",dc=df>0?(dark?"#4ade80":"#188038"):(dark?"#fc8181":"#c62828");c.font="700 11px Inter,sans-serif";c.fillStyle=dc;c.fillText(ar+Math.abs(df),bx+bw-40,ry);}}}
+      ry+=44;
+    }
+  } else { cv._cardRect=null; }
+  // Pre-compute line Y grid for fast hover detection
+  // Sample every 4px across chart width — O(1) lookup at hover time
+  const SAMPLE=4;
+  const gridW=Math.ceil(W/SAMPLE);
+  const lineGrid={}; // cid -> array of Y values sampled at each X step
+  for(const cid of cars){
+    const yArr=new Float32Array(gridW);
+    // Get rank Y at each week column
+    const knownPts=[];
+    for(let wi=0;wi<WEEKS.length;wi++){
+      const r=ranks[WEEKS[wi]]?ranks[WEEKS[wi]][cid]:null;
+      if(r!=null&&r<=MAX_RANK) knownPts.push({x:colX[wi],y:yR(r)});
+    }
+    if(!knownPts.length){lineGrid[cid]=null;continue;}
+    for(let gi=0;gi<gridW;gi++){
+      const gx=gi*SAMPLE;
+      // Find bracketing known points
+      let prev=null,next=null;
+      for(const p of knownPts){
+        if(p.x<=gx) prev=p;
+        if(p.x>=gx&&!next) next=p;
+      }
+      if(!prev&&!next){yArr[gi]=-1;continue;}
+      if(!prev){yArr[gi]=next.y;continue;}
+      if(!next){yArr[gi]=prev.y;continue;}
+      if(prev.x===next.x){yArr[gi]=prev.y;continue;}
+      const t=(gx-prev.x)/(next.x-prev.x);
+      const ease=t*t*(3-2*t);
+      yArr[gi]=prev.y+(next.y-prev.y)*ease;
+    }
+    lineGrid[cid]=yArr;
+  }
+  cv._dots=dots;cv._lineGrid=lineGrid;cv._gridSample=SAMPLE;
+
+  // Rank badges at each week column for primary carrier
+  const priKey=pinnedKey||(hovKey&&isPrimary(hovKey)?hovKey:null);
+  if(priKey){
+    const ci=getCI(priKey),color=p[ci%p.length];
+    for(let wi=0;wi<WEEKS.length;wi++){
+      const wk=WEEKS[wi];
+      const r=ranks[wk]?ranks[wk][priKey]:null;
+      if(r==null||r>MAX_RANK) continue;
+      const dotY=yR(r),dotX=colX[wi];
+      const rankText="#"+r;
+      c.font="700 11px Inter,sans-serif";
+      const tw=c.measureText(rankText).width;
+      const bw=tw+12,bh=20,br=5;
+      // Position: far left edge for left column, far right edge for right column, above dot for middle
+      let bx,by;
+      if(wi===0){
+        // Left column — badge at far left edge, outside the label
+        bx=2;by=dotY-bh/2;
+      } else if(wi===WEEKS.length-1){
+        // Right column — badge at far right edge, outside the label
+        bx=W-bw-2;by=dotY-bh/2;
+      } else {
+        // Middle column — badge above the dot
+        bx=dotX-bw/2;by=dotY-bh-12;
+        if(by<T) by=dotY+12; // flip below if too close to top
+      }
+      // Draw badge — neon style matching carrier color
+      c.shadowColor=color;c.shadowBlur=dark?8:4;
+      c.fillStyle=dark?color:"#fff";
+      c.globalAlpha=dark?0.95:1;
+      c.beginPath();c.roundRect(bx,by,bw,bh,br);c.fill();
+      c.shadowBlur=0;
+      if(!dark){c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();c.roundRect(bx+.5,by+.5,bw-1,bh-1,br);c.stroke();}
+      // Text
+      c.globalAlpha=1;
+      c.textAlign="center";c.textBaseline="middle";
+      c.font="700 11px Inter,sans-serif";
+      c.fillStyle=dark?"#0d1117":color;
+      c.fillText(rankText,bx+bw/2,by+bh/2);
+    }
+  }
+}
+
+// Hover detection — grid lookup, O(carriers) with no interpolation at hover time
+function findNearest(cv,mx,my){
+  const dots=cv._dots;
+  if(dots){let bd=18,bc=null;for(const d of dots){const dist=Math.hypot(mx-d.x,my-d.y);if(dist<bd){bd=dist;bc=d.cid;}}if(bc)return bc;}
+  const grid=cv._lineGrid,S=cv._gridSample;
+  if(!grid||!S)return null;
+  const gi=Math.round(mx/S);
+  let best=Infinity,bestCid=null;
+  for(const[cid,yArr]of Object.entries(grid)){
+    if(!yArr)continue;
+    const ly=gi>=0&&gi<yArr.length?yArr[gi]:-1;
+    if(ly<0)continue;
+    const dy=Math.abs(my-ly);
+    if(dy<best){best=dy;bestCid=cid;}
+  }
+  return bestCid;
+}
+function inCard(cv,mx,my){const r=cv._cardRect;return r&&mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h;}
+
+let hovPending=false;
+document.getElementById("canvas").addEventListener("mousemove",e=>{
+  const cv=e.target,b=cv.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;
+  if(dragging){dragMoved=true;cardPos={x:mx-dragOff.x,y:my-dragOff.y};if(!hovPending){hovPending=true;requestAnimationFrame(()=>{hovPending=false;drawCanvas();});}return;}
+  if(inCard(cv,mx,my)){cv.style.cursor="grab";return;}
+  const bc=findNearest(cv,mx,my);
+  if(bc!==hovKey){hovKey=bc;cv.style.cursor="pointer";if(!hovPending){hovPending=true;requestAnimationFrame(()=>{hovPending=false;drawCanvas();});}}
+},{passive:true});
+
+document.getElementById("canvas").addEventListener("mousedown",e=>{
+  const cv=e.target,b=cv.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;
+  if(inCard(cv,mx,my)){dragging=true;const r=cv._cardRect;dragOff={x:mx-r.x,y:my-r.y};if(!cardPos)cardPos={x:r.x,y:r.y};cv.style.cursor="grabbing";e.preventDefault();}
+});
+document.addEventListener("mouseup",()=>{if(dragging){dragging=false;document.getElementById("canvas").style.cursor="pointer";}});
+
+let dragMoved=false,lastClickTime=0,lastClickCid=null;
+document.getElementById("canvas").addEventListener("click",e=>{
+  if(dragMoved){dragMoved=false;return;}
+  const cv=e.target,b=cv.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;
+  if(inCard(cv,mx,my))return;
+  const bc=findNearest(cv,mx,my),now=Date.now();
+  if(pinnedKey){
+    if(bc&&bc!==pinnedKey&&now-lastClickTime<350&&lastClickCid===bc){pinnedKey=bc;cardPos=null;lastClickTime=0;lastClickCid=null;drawCanvas();}
+    else{pinnedKey=null;cardPos=null;lastClickTime=now;lastClickCid=bc;drawCanvas();}
+  } else {
+    if(bc){pinnedKey=bc;cardPos=null;drawCanvas();}
+    lastClickTime=now;lastClickCid=bc;
+  }
+});
+
+document.getElementById("canvas").addEventListener("mouseleave",()=>{hovKey=null;dragging=false;drawCanvas();});
+
+function animateMethodTransition(){animProgress+=0.06;if(animProgress>=1){animProgress=1;animPrev=null;animFrame=null;drawCanvas();return;}drawCanvas();animFrame=requestAnimationFrame(animateMethodTransition);}
+function setMethod(m){if(m===method)return;animPrev=method;animProgress=0;method=m;hovKey=null;document.querySelectorAll(".rank-btn").forEach(b=>{b.classList.toggle("active",b.textContent.toLowerCase().includes(m==="paid"?"total paid":m==="bills"?"total bills":"avg cost"));});if(animFrame)cancelAnimationFrame(animFrame);animFrame=requestAnimationFrame(animateMethodTransition);}
+function toggleDark(){dark=!dark;document.documentElement.setAttribute("data-theme",dark?"dark":"");drawCanvas();}
+let resizeTimer;
+window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{const c=document.getElementById("canvas");c._lw=0;c._lh=0;drawCanvas();},100);});
+drawCanvas();
+</script>
+</body>
+</html>
