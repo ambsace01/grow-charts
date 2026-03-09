@@ -339,22 +339,27 @@ function drawDrill(){
   const colW=W/5.5,nw=colW*.82;
   const x1=colW*.35,x2=colW*1.9,x3=colW*3.55;
 
-  setFont("700",11);C.fillStyle="#7a8da5";C.textAlign="center";
-  C.fillText("PAGES",x1+nw/2,20);C.fillText("BOOKS",x2+nw/2,20);C.fillText("LIBRARIES",x3+nw/2,20);
+  // Compact header for high book counts
+  const compact=n>12;
+  const TOP=compact?44:68;
 
-  setFont("700",12);C.fillStyle="#22d3ee";C.fillText(vname,W/2,42);
-  setFont("500",10);C.fillStyle="#5a7a90";
-  C.fillText(v.total_pages+" pages across "+n+" books",W/2,56);
+  setFont("700",10);C.fillStyle="#7a8da5";C.textAlign="center";
+  C.fillText("PAGES",x1+nw/2,compact?14:20);C.fillText("BOOKS",x2+nw/2,compact?14:20);C.fillText("LIBRARIES",x3+nw/2,compact?14:20);
+
+  setFont("700",compact?10:12);C.fillStyle="#22d3ee";C.fillText(vname+" — "+v.total_pages+" pages, "+n+" books",W/2,compact?32:42);
+  if(!compact){setFont("500",10);C.fillStyle="#5a7a90";C.fillText(v.total_pages+" pages across "+n+" books",W/2,56);}
   C.textAlign="left";
 
-  const TOP=68,AREA=H-TOP-8;
-
-  // Adaptive: compute gap and min height based on book count
-  // Compact mode for 15+ books, normal for fewer
-  const compact=n>12;
-  const GAP=compact?2:6;
-  const minH=compact?Math.max(16,Math.floor((AREA-GAP*(n-1))/n)):40;
-  const bH=layout(sorted.map(b=>b.pages),AREA,GAP,Math.max(16,minH));
+  // Compute exact available space and distribute
+  const GAP=compact?1:6;
+  const AREA=H-TOP-2;
+  // Force heights to fit: total = AREA exactly
+  const totalGap=GAP*(n-1);
+  const usable=AREA-totalGap;
+  const perBook=usable/n;
+  // If sqrt layout can't fit, just use equal heights
+  const minH=Math.max(14,Math.floor(perBook));
+  const bH=perBook<16?sorted.map(()=>perBook):layout(sorted.map(b=>b.pages),AREA,GAP,14);
 
   let by=TOP;
   sorted.forEach((b,i)=>{
