@@ -333,6 +333,8 @@ function drawDrill(){
   hitboxes=[];
   const vname=sel.value||drillVendors[0];
   const v=DATA.vendors[vname];if(!v)return;
+  const sorted=[...v.books].sort((a,b)=>b.pages-a.pages);
+  const n=sorted.length;
 
   const colW=W/5.5,nw=colW*.82;
   const x1=colW*.35,x2=colW*1.9,x3=colW*3.55;
@@ -342,41 +344,48 @@ function drawDrill(){
 
   setFont("700",12);C.fillStyle="#22d3ee";C.fillText(vname,W/2,42);
   setFont("500",10);C.fillStyle="#5a7a90";
-  C.fillText(v.total_pages+" pages across "+v.books.length+" books",W/2,56);
+  C.fillText(v.total_pages+" pages across "+n+" books",W/2,56);
   C.textAlign="left";
 
-  const TOP=68,GAP=6,AREA=H-TOP-8;
-  const sorted=[...v.books].sort((a,b)=>b.pages-a.pages);
-  const bH=layout(sorted.map(b=>b.pages),AREA,GAP,40);
+  const TOP=68,AREA=H-TOP-8;
+
+  // Adaptive: compute gap and min height based on book count
+  // Compact mode for 15+ books, normal for fewer
+  const compact=n>12;
+  const GAP=compact?2:6;
+  const minH=compact?Math.max(16,Math.floor((AREA-GAP*(n-1))/n)):40;
+  const bH=layout(sorted.map(b=>b.pages),AREA,GAP,Math.max(16,minH));
 
   let by=TOP;
   sorted.forEach((b,i)=>{
     const h=bH[i];
     const isH=hov&&hov.id==="db-"+b.bid;
 
-    // Book node
+    // Book node — always show name
     drawNode(x2,by,nw,h,IND,b.name,null,isH);
-    // Sub-info inside book node
-    if(h>30){
-      setFont("500",9);C.fillStyle=isH?"#8899b0":"#5a6a80";
-      C.fillText(b.pages+" pages · "+b.items+" items · "+b.status,x2+5,by+h/2+13);
+    // Sub-info if tall enough
+    if(h>28){
+      setFont("500",compact?7.5:9);C.fillStyle=isH?"#8899b0":"#5a6a80";
+      C.fillText(b.pages+"pg · "+b.items+" items · "+b.status,x2+5,by+h/2+(compact?10:13));
     }
 
-    // Page node (left)
-    const ph=h*.6;const ppy=by+(h-ph)/2;
-    drawNode(x1,ppy,nw,ph,TEAL,b.pages+" pages",b.items+" items",isH);
-    drawBez(x1+nw,ppy+ph/2,x2,by+h/2,Math.max(2,ph*.25),TEAL,IND,isH);
+    // Page node (left) — scale with book height
+    const ph=compact?h:h*.6;
+    const ppy=by+(h-ph)/2;
+    drawNode(x1,ppy,nw,ph,TEAL,b.pages+" pages",h>28?b.items+" items":null,isH);
+    drawBez(x1+nw,ppy+ph/2,x2,by+h/2,Math.max(1.5,ph*.2),TEAL,IND,isH);
 
-    // Library nodes (right)
+    // Library nodes (right) — one per customer, sized to fit within book row
     const custs=[...new Set(b.customers)];
     if(!custs.length)custs.push("(unassigned)");
-    const lhEach=Math.max(18,Math.min(26,(h-4)/custs.length-2));
-    let ly=by+Math.max(0,(h-custs.length*(lhEach+2))/2);
+    const maxLibH=compact?h:26;
+    const lhEach=Math.max(13,Math.min(maxLibH,(h-2)/custs.length-1));
+    let ly=by+Math.max(0,(h-custs.length*(lhEach+1))/2);
     for(const c of custs){
       const isUn=c.includes("unassigned");
       drawNode(x3,ly,nw,lhEach,isUn?AMB:MAG,c,null,isH);
-      drawBez(x2+nw,by+h/2,x3,ly+lhEach/2,Math.max(1,lhEach*.15),IND,isUn?AMB:MAG,isH);
-      ly+=lhEach+2;
+      drawBez(x2+nw,by+h/2,x3,ly+lhEach/2,Math.max(1,lhEach*.12),IND,isUn?AMB:MAG,isH);
+      ly+=lhEach+1;
     }
 
     hitboxes.push({id:"db-"+b.bid,x:x2,y:by,w:nw,h,type:"drill-book",data:b});
