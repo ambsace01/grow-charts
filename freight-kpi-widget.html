@@ -91,6 +91,7 @@
         <button class="week-btn" id="btn-216" onclick="setWeek('2-16')">W2-16</button>
         <button class="week-btn" id="btn-223" onclick="setWeek('2-23')">W2-23</button>
         <button class="week-btn active" id="btn-32" onclick="setWeek('3-2')">W3-2</button>
+        <button class="week-btn" id="btn-39" onclick="setWeek('3-9')">W3-9</button>
       </div>
       <div class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">
         <span class="dm-icon">&#9728;</span>
@@ -105,11 +106,12 @@
   </div>
 </div>
 <script>
-const WEEKS=["2-16","2-23","3-2"];
+const WEEKS=["2-16","2-23","3-2","3-9"];
 const data={
   "2-16":{totalShipments:468,avgPaidPerShipment:358.94,totalFreightPaid:167983.23,avgWeightPerShipment:1367,totalWeight:639576},
   "2-23":{totalShipments:362,avgPaidPerShipment:446.89,totalFreightPaid:161775.24,avgWeightPerShipment:1393,totalWeight:504412},
-  "3-2":{totalShipments:369,avgPaidPerShipment:428.71,totalFreightPaid:158194.40,avgWeightPerShipment:1465,totalWeight:540732}
+  "3-2":{totalShipments:369,avgPaidPerShipment:428.71,totalFreightPaid:158194.40,avgWeightPerShipment:1465,totalWeight:540732},
+  "3-9":{totalShipments:317,avgPaidPerShipment:427.30,totalFreightPaid:135453.12,avgWeightPerShipment:1460,totalWeight:463010}
 };
 const metrics=[
   {key:"totalShipments",      label:"Total Shipments",      format:"integer", unit:null},
@@ -118,7 +120,7 @@ const metrics=[
   {key:"avgWeightPerShipment",label:"Avg Weight / Shipment",format:"integer", unit:"lbs"},
   {key:"totalWeight",         label:"Total Weight",         format:"integer", unit:"lbs"}
 ];
-let currentWeek="3-2",darkMode=false;
+let currentWeek="3-9",darkMode=false;
 
 function prevWeek(w){const i=WEEKS.indexOf(w);return i>0?WEEKS[i-1]:null;}
 function fmt(v,t,u){let s=t==="currency"?"$"+v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):v.toLocaleString("en-US");return u?s+" "+u:s}
