@@ -111,7 +111,7 @@ html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--
 @keyframes rowFadeIn{0%{opacity:0}100%{opacity:1}}
 .tbl-row{opacity:0;animation:rowFadeIn .25s ease-out forwards}
 /* === TABLE — proven alignment: all grids identical, all cells use padding:0 6px === */
-.tbl-head,.tbl-row,.tbl-foot{display:grid;grid-template-columns:32px 1fr 72px 80px 116px 116px 80px;padding:0 16px;align-items:center}
+.tbl-head,.tbl-row,.tbl-foot{display:grid;grid-template-columns:var(--tbl-cols);padding:0 16px;align-items:center}
 .tbl-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
 .tbl-head{height:28px;border-bottom:1.5px solid var(--chart-border);position:sticky;top:0;z-index:2;background:var(--chart-bg)}
 .tbl-row{height:44px;border-bottom:1px solid var(--chart-border);cursor:pointer;transition:background .12s}
@@ -124,7 +124,7 @@ html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--
 /* Header cells */
 .hc{padding:0 6px;font-size:9px;font-weight:700;color:var(--text-muted)}
 .hc-upper{text-transform:uppercase;letter-spacing:.07em}
-.hc-center{text-align:center;padding:0}
+.hc-center{text-align:center}
 .hc-sort{cursor:pointer;user-select:none;transition:color .12s}
 .hc-sort:hover{color:var(--text-secondary)}
 .hc-sort.active{color:var(--text-primary)}
@@ -441,7 +441,7 @@ function tableHideCard(){if(tablePinned!==null)return;if(cardEl)cardEl.classList
 
 function buildHeader(){
   var head=$s('#tblHead'),sa=tableSortCol==='rank'?(tableSortDir==='asc'?'\u25B2':'\u25BC'):'\u25B2',sb=tableSortCol==='label'?(tableSortDir==='asc'?'\u25B2':'\u25BC'):'\u25B2';
-  head.innerHTML='<span class="hc hc-upper hc-center hc-sort'+(tableSortCol==='rank'?' active':'')+'" data-sort="rank">#<span class="sort-arrow">'+sa+'</span></span><span class="hc hc-upper hc-sort'+(tableSortCol==='label'?' active':'')+'" data-sort="label">Category<span class="sort-arrow">'+sb+'</span></span><span class="hc hc-upper hc-center">Trend</span><span class="hc">'+WEEKS[0]+'</span><span class="hc">'+WEEKS[1]+'</span><span class="hc">'+WEEKS[2]+'</span><span class="hc">Total</span>';
+  head.innerHTML='<span class="hc hc-upper hc-center hc-sort'+(tableSortCol==='rank'?' active':'')+'" data-sort="rank">#<span class="sort-arrow">'+sa+'</span></span><span class="hc hc-upper hc-sort'+(tableSortCol==='label'?' active':'')+'" data-sort="label">Category<span class="sort-arrow">'+sb+'</span></span><span class="hc hc-upper hc-center">Trend</span>'+WEEKS.map(function(w){return '<span class="hc hc-upper">'+w+'</span>'}).join('')+'<span class="hc hc-upper">Total</span>';
   head.querySelectorAll('.hc-sort').forEach(function(el){el.addEventListener('click',function(){var key=el.dataset.sort;if(tableSortCol===key)tableSortDir=tableSortDir==='asc'?'desc':'asc';else{tableSortCol=key;tableSortDir=key==='label'?'asc':'desc';}buildHeader();buildRows()})});
 }
 function buildRows(){
@@ -449,11 +449,11 @@ function buildRows(){
   var scroll=$s('#tblScroll'),st=scroll?scroll.scrollTop:0;body.innerHTML='';
   sorted.forEach(function(cat,ri){
     var ci=cat.baseRank-1,vals=WEEKS.map(function(w){return getVal(cat,w)}),total=vals.reduce(function(s,v){return s+v},0);
-    var col=pal[ci%pal.length],d1=fmtDelta(vals[1],vals[0]),d2=fmtDelta(vals[2],vals[1]);
+    var col=pal[ci%pal.length];
     var row=document.createElement('div');row.className='tbl-row';row.dataset.id=cat.id;
     row.style.animationDelay=(ri*30)+'ms';
     if(tablePinned===cat.id){row.classList.add('pinned');row.style.setProperty('--pin-col',col);}
-    row.innerHTML='<span class="rank">'+cat.baseRank+'</span><span class="cat-label" style="color:'+col+'">'+esc(cat.label)+'</span><span class="spark"><canvas width="64" height="28"></canvas></span><span class="vc">'+fmtK(vals[0])+'</span><span class="vc">'+fmtK(vals[1])+d1+'</span><span class="vc">'+fmtK(vals[2])+d2+'</span><span class="vc vc-bold">'+fmtK(total)+'</span>';
+    row.innerHTML='<span class="rank">'+cat.baseRank+'</span><span class="cat-label" style="color:'+col+'">'+esc(cat.label)+'</span><span class="spark"><canvas width="64" height="28"></canvas></span>'+vals.map(function(v,vi){return '<span class="vc">'+fmtK(v)+(vi>0?fmtDelta(v,vals[vi-1]):'')+'</span>'}).join('')+'<span class="vc vc-bold">'+fmtK(total)+'</span>';
     body.appendChild(row);drawSparkline(row.querySelector('canvas'),vals,col);
     row.addEventListener('click',function(){if(tablePinned===cat.id){tablePinned=null;row.classList.remove('pinned');row.style.removeProperty('--pin-col');tableHideCard();return;}var old=body.querySelector('.tbl-row.pinned');if(old){old.classList.remove('pinned');old.style.removeProperty('--pin-col');}tablePinned=cat.id;row.classList.add('pinned');row.style.setProperty('--pin-col',col);tableShowCard(cat,true);});
     row.addEventListener('mouseenter',function(){if(tablePinned===null)tableShowCard(cat,false);else if(tablePinned!==cat.id)tableShowCard(cat,false)});
@@ -463,9 +463,13 @@ function buildRows(){
 }
 function buildFooter(vis){
   var foot=$s('#tblFoot'),wt=WEEKS.map(function(w){return vis.reduce(function(s,c){return s+getVal(c,w)},0)}),gt=wt.reduce(function(s,v){return s+v},0);
-  foot.innerHTML='<span></span><span class="foot-text">Total</span><span></span><span class="fc">'+fmtK(wt[0])+'</span><span class="fc">'+fmtK(wt[1])+'</span><span class="fc">'+fmtK(wt[2])+'</span><span class="fc">'+fmtK(gt)+'</span>';
+  foot.innerHTML='<span></span><span class="foot-text">Total</span><span></span><span class="fc">'+wt.map(function(v){return fmtK(v)}).join('</span><span class="fc">')+'</span><span class="fc">'+fmtK(gt)+'</span>';
 }
-function tableRefresh(){updateSummary();buildHeader();buildRows();}
+function tableRefresh(){
+  var wc=WEEKS.length,colW=Math.max(70,Math.floor(320/wc));
+  document.documentElement.style.setProperty('--tbl-cols','32px 1fr 72px '+('repeat('+wc+','+colW+'px) ')+'80px');
+  updateSummary();buildHeader();buildRows();
+}
 $s('.chart-area').addEventListener('click',function(e){if(activeView!=='table')return;if(e.target.closest('.tbl-row')||e.target.closest('.info-card')||e.target.closest('.tbl-head'))return;if(tablePinned!==null){tablePinned=null;var old=$s('#tblBody').querySelector('.tbl-row.pinned');if(old){old.classList.remove('pinned');old.style.removeProperty('--pin-col');}tableHideCard();}});
 
 // =============================================
@@ -511,7 +515,7 @@ function setView(v){
   $s('#viewTable').classList.toggle('active',v==='table');
   // Initialize the active view
   if(v==='classic'){resize();buildLines();animate();}
-  else{buildHeader();buildRows();flashElement($s('#tblScroll'));}
+  else{tableRefresh();flashElement($s('#tblScroll'));}
 }
 function resetAll(){
   if(cardEl)cardEl.classList.remove('visible','pinned');
