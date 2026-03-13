@@ -88,10 +88,7 @@
     </div>
     <div class="header-right">
       <div class="week-toggle">
-        <button class="week-btn" id="btn-216" onclick="setWeek('2-16')">W2-16</button>
-        <button class="week-btn" id="btn-223" onclick="setWeek('2-23')">W2-23</button>
-        <button class="week-btn active" id="btn-32" onclick="setWeek('3-2')">W3-2</button>
-        <button class="week-btn" id="btn-39" onclick="setWeek('3-9')">W3-9</button>
+        <span id="week-buttons"></span>
       </div>
       <div class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">
         <span class="dm-icon">&#9728;</span>
@@ -120,7 +117,20 @@ const metrics=[
   {key:"avgWeightPerShipment",label:"Avg Weight / Shipment",format:"integer", unit:"lbs"},
   {key:"totalWeight",         label:"Total Weight",         format:"integer", unit:"lbs"}
 ];
-let currentWeek="3-9",darkMode=false;
+let currentWeek=WEEKS[WEEKS.length-1],darkMode=false;
+
+// Dynamic week button generation
+(function(){
+  const container=document.getElementById("week-buttons");
+  WEEKS.forEach(w=>{
+    const btn=document.createElement("button");
+    btn.className="week-btn"+(w===currentWeek?" active":"");
+    btn.id="btn-"+w.replace("-","");
+    btn.onclick=()=>setWeek(w);
+    btn.textContent="W"+w;
+    container.appendChild(btn);
+  });
+})();
 
 function prevWeek(w){const i=WEEKS.indexOf(w);return i>0?WEEKS[i-1]:null;}
 function fmt(v,t,u){let s=t==="currency"?"$"+v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):v.toLocaleString("en-US");return u?s+" "+u:s}
