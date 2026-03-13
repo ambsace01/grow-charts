@@ -77,10 +77,7 @@
     </div>
     <div class="header-right">
       <div class="week-toggle">
-        <button class="week-btn" id="btn-216" onclick="setWeek('2-16')">W2-16</button>
-        <button class="week-btn" id="btn-223" onclick="setWeek('2-23')">W2-23</button>
-        <button class="week-btn active" id="btn-32" onclick="setWeek('3-2')">W3-2</button>
-        <button class="week-btn" id="btn-39" onclick="setWeek('3-9')">W3-9</button>
+        <span id="week-buttons"></span>
       </div>
       <div class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">
         <span class="dm-icon">&#9728;</span>
@@ -98,7 +95,8 @@ const WEEKS=["2-16","2-23","3-2","3-9"];
 const RAW={
   "2-16":{AM:1934.20,AT:13210.88,AV:29104.12,CA:5120.33,CO:2387.45,DC:4521.90,FM:1876.33,FR:9102.44,HB:2801.22,HZ:6890.11,KC:87234.18,NW:834.56,WC:4965.71},
   "2-23":{AM:1726.35,AT:12404.52,AV:27684.35,CA:4808.52,CO:2049.26,DC:4088.86,FM:2008.74,FR:8641.71,HB:2519.47,HZ:6136.56,KC:84699.06,NW:722.04,WC:4285.80},
-  "3-2":{AM:590.64,AT:12150.07,AV:28723.14,CA:1739.97,CO:3783.60,DC:4037.77,FM:1111.65,FR:12608.60,HB:5023.40,HZ:5211.53,KC:75890.10,NW:2690.56,SP:4.26,WC:4629.11}
+  "3-2":{AM:590.64,AT:12150.07,AV:28723.14,CA:1739.97,CO:3783.60,DC:4037.77,FM:1111.65,FR:12608.60,HB:5023.40,HZ:5211.53,KC:75890.10,NW:2690.56,SP:4.26,WC:4629.11},
+  "3-9":{AM:1656.77,AT:10843.31,AV:27093.13,CA:1831.03,CO:3518.60,DC:3438.64,FM:342.91,FR:11060.27,HB:2178.32,HZ:3488.93,KC:67178.46,NW:935.36,WC:1887.39}
 };
 const LABELS={AM:"Amelia",AT:"Atlanta",AV:"Avon",CA:"Canada",CO:"Colorado",DC:"DC Metro",FM:"Farmer's Mkt",FR:"Franklin",HB:"Harrisburg",HZ:"Hazleton",KC:"Kansas City",NW:"Northwest",SP:"Springfield",WC:"West Coast"};
 // Fixed color index per account — assigned by best-ever Total Paid rank across all weeks
@@ -106,7 +104,20 @@ const ACCT_COLORS={KC:0,AV:1,AT:2,FR:3,HZ:4,CA:5,HB:6,WC:7,DC:8,CO:9,NW:10,AM:11
 const PAL_L=["#1a73e8","#d93025","#0f9d58","#f4a623","#9c27b0","#00acc1","#e53935","#1565c0","#2e7d32","#ef6c00","#6a1b9a","#00838f","#d84315","#1e88e5"];
 const PAL_D=["#60a5fa","#f87171","#4ade80","#fbbf24","#c084fc","#22d3ee","#fb7185","#38bdf8","#86efac","#fcd34d","#d8b4fe","#67e8f9","#fca5a5","#7dd3fc"];
 
-let week="3-2", dark=false, hov=null, pinnedKey="KC";
+let week=WEEKS[WEEKS.length-1], dark=false, hov=null, pinnedKey="KC";
+
+// Dynamic week button generation
+(function(){
+  const container=document.getElementById("week-buttons");
+  WEEKS.forEach(w=>{
+    const btn=document.createElement("button");
+    btn.className="week-btn"+(w===week?" active":"");
+    btn.id="btn-"+w.replace("-","");
+    btn.onclick=()=>setWeek(w);
+    btn.textContent="W"+w;
+    container.appendChild(btn);
+  });
+})();
 let flashAlphas={}, flashFrame=null;
 let cachedBox=null, cachedW=0, cachedH=0;
 let spCanvas=null, spKey=null, spWeek=null, spDark=null;
