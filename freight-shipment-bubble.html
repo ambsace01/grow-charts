@@ -155,16 +155,16 @@ var SVCS=[
 {id:"fedex_express_saver",label:"FedEx Express Saver",carrier:"fedex","W2-16":{count:7,spend:1549.93},"W2-23":{count:4,spend:1141.64},"W3-2":{count:1,spend:50.41},"W3-9":{count:0,spend:0}},
 {id:"fedex_first_overnight",label:"FedEx First Overnight",carrier:"fedex","W2-16":{count:7,spend:765.41},"W2-23":{count:6,spend:684.50},"W3-2":{count:2,spend:225.48},"W3-9":{count:3,spend:372.41}},
 {id:"fedex_ground",label:"FedEx Ground",carrier:"fedex","W2-16":{count:2429,spend:53335.15},"W2-23":{count:2815,spend:61786.50},"W3-2":{count:2540,spend:57921.60},"W3-9":{count:2873,spend:59955.46}},
-{id:"fedex_home_delivery",label:"FedEx Home Delivery",carrier:"fedex","W2-16":{count:64,spend:1317.35},"W2-23":{count:76,spend:1480.38},"W3-2":{count:67,spend:1239.78}},
+{id:"fedex_home_delivery",label:"FedEx Home Delivery",carrier:"fedex","W2-16":{count:64,spend:1317.35},"W2-23":{count:76,spend:1480.38},"W3-2":{count:67,spend:1239.78},"W3-9":{count:0,spend:0}},
 {id:"fedex_intl_economy",label:"FedEx Intl Economy",carrier:"fedex","W2-16":{count:13,spend:1181.74},"W2-23":{count:8,spend:7471.65},"W3-2":{count:12,spend:5056.30},"W3-9":{count:11,spend:1327.56}},
-{id:"fedex_intl_next_flight",label:"FedEx Intl Next Flight",carrier:"fedex","W2-16":{count:0,spend:0},"W2-23":{count:1,spend:155.71},"W3-2":{count:1,spend:183.99}},
+{id:"fedex_intl_next_flight",label:"FedEx Intl Next Flight",carrier:"fedex","W2-16":{count:0,spend:0},"W2-23":{count:1,spend:155.71},"W3-2":{count:1,spend:183.99},"W3-9":{count:0,spend:0}},
 {id:"fedex_std_overnight",label:"FedEx Std Overnight",carrier:"fedex","W2-16":{count:3,spend:225.45},"W2-23":{count:2,spend:108.32},"W3-2":{count:1,spend:59.59},"W3-9":{count:0,spend:0}},
 {id:"ltl_freight",label:"LTL Freight",carrier:"ltl","W2-16":{count:396,spend:81245.46},"W2-23":{count:295,spend:65964.67},"W3-2":{count:301,spend:69359.15},"W3-9":{count:278,spend:53455.36}},
 {id:"truckload",label:"Truckload",carrier:"ltl","W2-16":{count:20,spend:19400.87},"W2-23":{count:15,spend:18764.93},"W3-2":{count:13,spend:13854.80},"W3-9":{count:13,spend:15412.33}},
 {id:"ups_2day_air_am",label:"UPS 2Day Air AM",carrier:"ups","W2-16":{count:2,spend:0},"W2-23":{count:0,spend:0},"W3-2":{count:0,spend:0},thirdParty:true},
 {id:"ups_ground",label:"UPS Ground",carrier:"ups","W2-16":{count:170,spend:861.81},"W2-23":{count:218,spend:1252.18},"W3-2":{count:262,spend:1369.67},"W3-9":{count:214,spend:1112.47}},
 {id:"ups_nda_early",label:"UPS NDA Early",carrier:"ups","W2-16":{count:0,spend:0},"W2-23":{count:2,spend:0},"W3-2":{count:0,spend:0},"W3-9":{count:2,spend:0},thirdParty:true},
-{id:"ups_next_day_air",label:"UPS Next Day Air",carrier:"ups","W2-16":{count:0,spend:0},"W2-23":{count:7,spend:104.81},"W3-2":{count:10,spend:0}}
+{id:"ups_next_day_air",label:"UPS Next Day Air",carrier:"ups","W2-16":{count:0,spend:0},"W2-23":{count:7,spend:104.81},"W3-2":{count:10,spend:0},"W3-9":{count:0,spend:0}}
 ];
 var WEEKS=['W2-16','W2-23','W3-2','W3-9'];
 var $s=function(s){return document.querySelector(s)};
@@ -172,7 +172,7 @@ var fmt=function(v){return '$'+v.toLocaleString('en-US',{minimumFractionDigits:0
 var fmt2=function(v){return '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})};
 var fmtK=function(v){return v>=10000?'$'+(v/1000).toFixed(1)+'k':v>=1000?'$'+(v/1000).toFixed(1)+'k':fmt(Math.round(v))};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-var dark=false,activeCarrier='all',activeWeek='W2-16';
+var dark=false,activeCarrier='all',activeWeek=WEEKS[0];
 var hoveredId=null,pinnedCards=[];
 function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 var CCOL_L=['#0891b2','#4f46e5','#c026d3','#d97706','#059669','#dc2626'],CCOL_D=['#22d3ee','#818cf8','#e879f9','#fbbf24','#34d399','#fc8181'];
@@ -184,7 +184,7 @@ var cssText,cssMuted,cssBorder;
 function cacheCSS(){cssText=getCSS('--text-primary');cssMuted=getCSS('--text-muted');cssBorder=getCSS('--chart-border');}
 function drawOutlinedText(text,x,y,align,fs){ctx.save();ctx.font='700 '+fs+'px Inter,sans-serif';ctx.textAlign=align;ctx.textBaseline='middle';ctx.strokeStyle=dark?'rgba(0,0,0,0.7)':'rgba(0,0,0,0.3)';ctx.lineWidth=dark?2.5:2;ctx.lineJoin='round';ctx.strokeText(text,x,y);ctx.fillStyle='#fff';ctx.fillText(text,x,y);ctx.restore();}
 function pinned(id){return pinnedCards.some(function(p){return p.id===id;});}
-function getWeekData(s,wk){if(wk==='all'){var tc=0,ts=0;WEEKS.forEach(function(w){tc+=s[w].count;ts+=s[w].spend;});return{count:tc,spend:ts};}return s[wk];}
+function getWeekData(s,wk){if(wk==='all'){var tc=0,ts=0;WEEKS.forEach(function(w){var d=s[w]||{count:0,spend:0};tc+=d.count;ts+=d.spend;});return{count:tc,spend:ts};}return s[wk]||{count:0,spend:0};}
 function avgCost(s,wk){var d=getWeekData(s,wk);return(d&&d.count>0)?d.spend/d.count:0;}
 function getVisible(){return SVCS.filter(function(s){if(activeCarrier!=='all'&&s.carrier!==activeCarrier)return false;var d=getWeekData(s,activeWeek);return d&&d.count>0;});}
 var GMAX_C=0,GMAX_A=0,GMAX_S=0;
@@ -264,9 +264,10 @@ function animate(){if(animId)cancelAnimationFrame(animId);animStart=performance.
 function startFade(){fading=true;fadeStart=performance.now();draw(1);}
 function refresh(anim){var old=bubbles.length?bubbles.slice():null;buildBubbles();updateSummary();if(anim&&old){prevBubbles=old;animate();}else{prevBubbles=null;startFade();}}
 function hitTest(mx,my){var dOrd=bubbles.slice().sort(function(a,b){var ap=pinned(a.svc.id)?2:a.svc.id===hoveredId?1:0,bp=pinned(b.svc.id)?2:b.svc.id===hoveredId?1:0;if(ap!==bp)return ap-bp;return b.r-a.r;});for(var i=dOrd.length-1;i>=0;i--){var b=dOrd[i],dx=mx-b.x,dy=my-b.y,hr=Math.max(b.r,8)+4;if(dx*dx+dy*dy<=hr*hr)return b;}return null;}
-canvas.addEventListener('mousemove',function(e){var r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,hit=hitTest(mx,my);
+var _hovRAF=false;
+canvas.addEventListener('mousemove',function(e){if(_hovRAF)return;_hovRAF=true;requestAnimationFrame(function(){_hovRAF=false;var r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,hit=hitTest(mx,my);
   if(hit){canvas.style.cursor='pointer';if(hoveredId!==hit.svc.id){hoveredId=hit.svc.id;draw(1);if(!pinned(hit.svc.id))showHoverCard(hit.svc);}}
-  else{canvas.style.cursor='default';if(hoveredId!==null){hoveredId=null;draw(1);rmHover();}}});
+  else{canvas.style.cursor='default';if(hoveredId!==null){hoveredId=null;draw(1);rmHover();}}});});
 canvas.addEventListener('click',function(e){var r=canvas.getBoundingClientRect(),hit=hitTest(e.clientX-r.left,e.clientY-r.top);if(hit)togglePin(hit.svc.id);});
 canvas.addEventListener('mouseleave',function(){hoveredId=null;rmHover();draw(1);});
 
@@ -282,7 +283,7 @@ function buildCardHTML(svc){
     h+='<div class="ic-detail-row"><span class="ic-detail-label">Shipments</span><span class="ic-detail-val">'+d.count.toLocaleString()+'</span><span class="ic-detail-spacer"></span></div>';
     h+='<div class="ic-detail-row"><span class="ic-detail-label">Total Spend</span><span class="ic-detail-val">'+fmtK(d.spend)+'</span><span class="ic-detail-spacer"></span></div>';});
   var tc=0,ts=0;WEEKS.forEach(function(w){tc+=svc[w].count;ts+=svc[w].spend;});var ta=tc?ts/tc:0;
-  h+='<div class="ic-total-sep"></div><span class="ic-total-label">3-Week Total</span><span class="ic-total-val">'+fmtK(ts)+'</span><span class="ic-total-spacer"></span>';
+  h+='<div class="ic-total-sep"></div><span class="ic-total-label">'+WEEKS.length+'-Week Total</span><span class="ic-total-val">'+fmtK(ts)+'</span><span class="ic-total-spacer"></span>';
   h+='<div class="ic-detail-row"><span class="ic-detail-label">Total Shipments</span><span class="ic-detail-val">'+tc.toLocaleString()+'</span><span class="ic-detail-spacer"></span></div>';
   h+='<div class="ic-detail-row"><span class="ic-detail-label">Blended Avg</span><span class="ic-detail-val">'+fmt2(ta)+'</span><span class="ic-detail-spacer"></span></div>';
   if(svc.carrier==='ups')h+='<span class="ic-note">UPS: freight charges only, excl. accessorials</span>';
@@ -315,7 +316,7 @@ function flashEl(el){if(!el)return;el.style.position='relative';var fl=el.queryS
 
 function setCarrier(c){activeCarrier=c;document.querySelectorAll('.carrier-btn').forEach(function(b){b.classList.toggle('active',b.dataset.carrier===c);});hoveredId=null;rmHover();var vis=getVisible(),vids={};vis.forEach(function(s){vids[s.id]=true;});pinnedCards=pinnedCards.filter(function(p){return vids[p.id];});renderPins();updReset();refresh(true);}
 function setWeek(wk){if(wk===activeWeek)return;activeWeek=wk;document.querySelectorAll('.week-btn').forEach(function(b){b.classList.toggle('active',b.dataset.week===wk);});hoveredId=null;rmHover();renderPins();refresh(true);flashEl($s('#bubbleWrap'));}
-function resetAll(){activeCarrier='all';activeWeek='W2-16';document.querySelectorAll('.carrier-btn').forEach(function(b){b.classList.toggle('active',b.dataset.carrier==='all');});document.querySelectorAll('.week-btn').forEach(function(b){b.classList.toggle('active',b.dataset.week==='W2-16');});pinnedCards=[];hoveredId=null;document.querySelectorAll('.info-card').forEach(function(e){e.remove();});updReset();refresh(false);}
+function resetAll(){activeCarrier='all';activeWeek=WEEKS[0];document.querySelectorAll('.carrier-btn').forEach(function(b){b.classList.toggle('active',b.dataset.carrier==='all');});document.querySelectorAll('.week-btn').forEach(function(b){b.classList.toggle('active',b.dataset.week===WEEKS[0]);});pinnedCards=[];hoveredId=null;document.querySelectorAll('.info-card').forEach(function(e){e.remove();});updReset();refresh(false);}
 function toggleDark(){dark=!dark;document.documentElement.setAttribute('data-theme',dark?'dark':'');updateLegendDots();buildBubbles();renderPins();draw(1);}
 document.querySelectorAll('.carrier-btn').forEach(function(b){b.addEventListener('click',function(){setCarrier(b.dataset.carrier);});});
 document.querySelectorAll('.week-btn').forEach(function(b){b.addEventListener('click',function(){setWeek(b.dataset.week);});});
