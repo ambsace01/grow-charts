@@ -1,0 +1,54 @@
+name: Freight Dashboard Update
+
+on:
+  # Trigger when a HANT-*.XLS file is pushed to the data/ directory
+  push:
+    paths:
+      - 'data/HANT-*.XLS'
+  # Also allow manual trigger
+  workflow_dispatch:
+    inputs:
+      xls_file:
+        description: 'XLS filename in data/ directory'
+        required: true
+        type: string
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install openpyxl
+          sudo apt-get update && sudo apt-get install -y libreoffice-calc
+
+      - name: Determine XLS file
+        id: find-xls
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "xls_file=data/${{ inputs.xls_file }}" >> $GITHUB_OUTPUT
+          else
+            # Find the most recently added XLS file
+            XLS_FILE=$(git diff --name-only HEAD~1 HEAD -- 'data/HANT-*.XLS' | head -1)
+            echo "xls_file=$XLS_FILE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run freight update
+        run: |
+          python scripts/freight_update.py "${{ steps.find-xls.outputs.xls_file }}" --widgets-dir .
+
+      - name: Commit and push
+        run: |
+          git config user.name "Freight Dashboard Bot"
+          git config user.email "freight-bot@hantover.com"
+          git add *.html
+          WEEK=$(echo "${{ steps.find-xls.outputs.xls_file }}" | grep -oP '\d{4}-\d{2}-\d{2}' | sed 's/^20[0-9][0-9]-//' | sed 's/-0/\-/' | sed 's/^0//')
+          git commit -m "Dashboard update: W${WEEK}" || echo "No changes to commit"
+          git push
