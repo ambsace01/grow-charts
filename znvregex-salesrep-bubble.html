@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sales Rep Performance Bubble</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2333;--border:#2e3a4e;
+  --text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#6b7f99;
+  --chart-bg:#161b22;--chart-border:#2e3a4e;
+  --accent:#58a6ff;--shadow:0 4px 16px rgba(0,0,0,.4);
+  --neg:#fc8181;--pos:#4ade80;--zero:#8b949e;
+  --week-active-bg:#58a6ff;--week-active-text:#0d1117;
+  --red:#fc8181;--red-bg:#2d1214;
+}
+[data-theme="light"]{
+  --bg:#f6f8fa;--surface:#ffffff;--surface2:#f1f5f9;--border:#e3e7ed;
+  --text-primary:#1f2937;--text-secondary:#4b5563;--text-muted:#6b7a99;
+  --chart-bg:#ffffff;--chart-border:#e3e7ed;
+  --accent:#1a73e8;--shadow:0 4px 16px rgba(0,0,0,.08);
+  --neg:#c0392b;--pos:#1e8a4a;--zero:#6b7a99;
+  --week-active-bg:#1a73e8;--week-active-text:#ffffff;
+  --red:#c0392b;--red-bg:#fee2e2;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text-primary)}
+.widget{display:flex;flex-direction:column;height:100%;padding:16px 20px 12px;gap:0}
+.header{display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.header-left{display:flex;flex-direction:column;gap:2px}
+.eyebrow{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)}
+.title{font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:-.01em}
+.header-right{display:flex;align-items:center;gap:10px}
+.reset-btn{height:26px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--text-muted);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;padding:0 9px;transition:all .16s;opacity:0;pointer-events:none}
+.reset-btn.visible{opacity:1;pointer-events:auto}
+.reset-btn:hover{color:var(--text-primary);border-color:var(--text-muted)}
+.reset-btn.has-pins{color:var(--red);border-color:var(--red);background:var(--red-bg)}
+.dm-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.dm-icon{font-size:13px;color:var(--text-muted)}
+.dm-track{width:32px;height:18px;border-radius:9px;background:var(--border);position:relative;transition:background .2s}
+.dm-knob{width:14px;height:14px;border-radius:50%;background:var(--text-primary);position:absolute;top:2px;left:2px;transition:left .2s}
+[data-theme="light"] .dm-knob{left:16px}
+.summary-row{display:flex;gap:8px;margin:8px 0 4px;flex-shrink:0}
+.stat-card{flex:1;padding:6px 10px;border-radius:6px;background:var(--surface2);border:1px solid var(--chart-border)}
+.stat-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+.stat-value{font-size:15px;font-weight:800;line-height:1.3;color:var(--text-primary)}
+.stat-sub{font-size:9px;font-weight:500;color:var(--text-muted);margin-top:1px}
+.divider{height:1px;background:var(--border);margin:6px 0;flex-shrink:0}
+.chart-wrap{flex:1;position:relative;min-height:0;overflow:visible}
+canvas{display:block;width:100%;height:100%}
+.axis-label{position:absolute;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);pointer-events:none}
+.axis-label-x{bottom:2px;left:50%;transform:translateX(-50%)}
+.axis-label-y{top:50%;left:-2px;transform:rotate(-90deg) translateX(-50%);transform-origin:0 0;white-space:nowrap}
+.info-card{position:absolute;width:260px;min-height:60px;background:var(--surface);border:1px solid var(--chart-border);border-radius:8px;padding:0;box-shadow:var(--shadow);z-index:20;opacity:0;pointer-events:none;transition:opacity .15s;overflow:visible;font-size:11px;display:flex;flex-direction:column}
+.info-card.visible{opacity:1;pointer-events:none}
+.info-card.pinned{opacity:1;border-color:var(--week-active-bg);box-shadow:0 0 0 1px var(--week-active-bg),var(--shadow);cursor:move;pointer-events:auto}
+.info-card-inner{overflow-y:auto;flex:1;border-radius:8px;min-height:0}
+.ic-accent{position:absolute;top:0;left:0;bottom:0;width:4px;border-radius:8px 0 0 8px}
+.ic-handle{position:absolute;z-index:25}
+.ic-handle-tl{top:-3px;left:-3px;width:12px;height:12px;cursor:nwse-resize}
+.ic-handle-tr{top:-3px;right:-3px;width:12px;height:12px;cursor:nesw-resize}
+.ic-handle-bl{bottom:-3px;left:-3px;width:12px;height:12px;cursor:nesw-resize}
+.ic-handle-br{bottom:-3px;right:-3px;width:12px;height:12px;cursor:nwse-resize}
+.ic-handle-t{top:-3px;left:12px;right:12px;height:6px;cursor:ns-resize}
+.ic-handle-b{bottom:-3px;left:12px;right:12px;height:6px;cursor:ns-resize}
+.ic-handle-l{left:-3px;top:12px;bottom:12px;width:6px;cursor:ew-resize}
+.ic-handle-r{right:-3px;top:12px;bottom:12px;width:6px;cursor:ew-resize}
+.info-card-header{display:flex;align-items:center;justify-content:space-between;padding:.7em .9em .5em;user-select:none;border-bottom:1px solid var(--chart-border)}
+.info-card-title{font-size:.95em;font-weight:700;letter-spacing:.02em;color:var(--text-primary)}
+.info-card-close{cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:2px 4px;border-radius:4px}
+.info-card-close:hover{background:var(--surface2);color:var(--text-primary)}
+.ic-body{padding:.6em .9em .7em}
+.ic-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)}
+.ic-row:last-child{border-bottom:none}
+.ic-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)}
+.ic-value{font-size:11px;font-weight:700;color:var(--text-primary)}
+.ic-gp-pos{color:var(--pos)}
+.ic-gp-neg{color:var(--neg)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;flex-shrink:0;align-items:center;justify-content:flex-end}
+.legend-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-secondary)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.size-legend{display:flex;align-items:center;gap:8px;margin-left:16px}
+.size-legend-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+.size-dot{border-radius:50%;border:1.5px solid var(--text-muted);display:inline-block}
+.size-label{font-size:9px;color:var(--text-muted)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardPulse{0%,100%{box-shadow:0 0 0 1px var(--week-active-bg),var(--shadow)}50%{box-shadow:0 0 0 3px var(--week-active-bg),0 0 14px 2px var(--week-active-bg),var(--shadow)}}
+.info-card.pinned.highlight{animation:cardPulse 1.2s ease-in-out infinite}
+.animating .stat-card,.animating .chart-wrap,.animating .legend{animation:fadeUp .25s ease both}
+.animating .stat-card:nth-child(1){animation-delay:0s}
+.animating .stat-card:nth-child(2){animation-delay:.04s}
+.animating .stat-card:nth-child(3){animation-delay:.07s}
+.animating .stat-card:nth-child(4){animation-delay:.10s}
+.animating .chart-wrap{animation-delay:.14s}
+.animating .legend{animation-delay:.18s}
+</style>
+</head>
+<body>
+<div class="widget animating">
+  <div class="header">
+    <div class="header-left">
+      <span class="eyebrow">Hantover Inc. &middot; ZNVREGEX 365-Day</span>
+      <span class="title">Sales Rep Performance</span>
+    </div>
+    <div class="header-right">
+      <button class="reset-btn" id="resetBtn" onclick="resetAll()" title="Clear all pinned cards (or double-click chart)">&#8634; Reset</button>
+      <div class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">
+        <span class="dm-icon">&#9728;</span>
+        <div class="dm-track"><div class="dm-knob"></div></div>
+        <span class="dm-icon">&#9790;</span>
+      </div>
+    </div>
+  </div>
+  <div class="summary-row" id="summaryRow"></div>
+  <div class="divider"></div>
+  <div class="chart-wrap" id="wrap">
+    <canvas id="canvas"></canvas>
+    <span class="axis-label axis-label-x">Total MDSE Sales (log scale)</span>
+    <span class="axis-label axis-label-y">Gross Profit %</span>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+<script>
+const REPS=[{"r":268,"m":15886830.44,"g":2348880.02,"p":14.8,"i":690,"c":6,"d":343},{"r":267,"m":1950156.76,"g":191894.41,"p":9.8,"i":500,"c":3,"d":338},{"r":226,"m":861731.1,"g":177018.61,"p":20.5,"i":2528,"c":219,"d":353},{"r":215,"m":592439.69,"g":136590.28,"p":23.1,"i":2090,"c":225,"d":258},{"r":285,"m":508109.8,"g":50704.09,"p":10.0,"i":567,"c":9,"d":228},{"r":201,"m":495457.82,"g":109026.17,"p":22.0,"i":1523,"c":180,"d":257},{"r":210,"m":484730.53,"g":94881.79,"p":19.6,"i":1643,"c":170,"d":255},{"r":296,"m":481252.45,"g":177499.05,"p":36.9,"i":7155,"c":43,"d":258},{"r":291,"m":471321.55,"g":52663.19,"p":11.2,"i":190,"c":1,"d":149},{"r":270,"m":406483.53,"g":42800.38,"p":10.5,"i":579,"c":4,"d":231},{"r":233,"m":389885.82,"g":69934.64,"p":17.9,"i":1127,"c":127,"d":249},{"r":269,"m":381951.4,"g":39814.47,"p":10.4,"i":290,"c":7,"d":171},{"r":242,"m":352503.94,"g":69398.41,"p":19.7,"i":1176,"c":125,"d":250},{"r":259,"m":336321.63,"g":37353.94,"p":11.1,"i":398,"c":3,"d":195},{"r":227,"m":315165.22,"g":-47869.27,"p":-15.2,"i":40,"c":11,"d":158},{"r":225,"m":254722.77,"g":48263.81,"p":18.9,"i":1058,"c":155,"d":254},{"r":245,"m":193079.72,"g":31428.15,"p":16.3,"i":560,"c":12,"d":225},{"r":244,"m":190292.66,"g":27610.28,"p":14.5,"i":563,"c":27,"d":231},{"r":286,"m":154134.32,"g":15976.75,"p":10.4,"i":307,"c":2,"d":177},{"r":276,"m":122821.24,"g":21001.66,"p":17.1,"i":805,"c":177,"d":237},{"r":284,"m":103060.41,"g":13760.28,"p":13.4,"i":124,"c":1,"d":102},{"r":222,"m":94827.55,"g":19756.28,"p":20.8,"i":309,"c":38,"d":162},{"r":283,"m":83536.09,"g":12236.26,"p":14.6,"i":130,"c":1,"d":110},{"r":223,"m":72869.43,"g":17876.92,"p":24.5,"i":208,"c":28,"d":132},{"r":246,"m":68827.0,"g":16080.72,"p":23.4,"i":271,"c":92,"d":86},{"r":234,"m":58785.23,"g":12287.82,"p":20.9,"i":189,"c":26,"d":120},{"r":294,"m":51289.2,"g":0,"p":0.0,"i":2,"c":1,"d":1},{"r":221,"m":40540.17,"g":8772.5,"p":21.6,"i":117,"c":40,"d":78},{"r":282,"m":39539.37,"g":320.82,"p":0.8,"i":149,"c":1,"d":125},{"r":262,"m":25475.95,"g":458.1,"p":1.8,"i":78,"c":9,"d":68},{"r":280,"m":20370.69,"g":3671.61,"p":18.0,"i":83,"c":4,"d":68},{"r":243,"m":20208.1,"g":3963.36,"p":19.6,"i":100,"c":26,"d":67},{"r":264,"m":19980.32,"g":12514.4,"p":62.6,"i":33,"c":3,"d":149},{"r":206,"m":16398.95,"g":3482.98,"p":21.2,"i":207,"c":7,"d":132},{"r":265,"m":14337.85,"g":2195.77,"p":15.3,"i":36,"c":12,"d":31},{"r":207,"m":10322.76,"g":1695.57,"p":16.4,"i":39,"c":9,"d":30},{"r":253,"m":8741.75,"g":1764.35,"p":20.2,"i":31,"c":1,"d":28},{"r":240,"m":8058.39,"g":-1014.21,"p":-12.6,"i":12,"c":1,"d":6},{"r":214,"m":4969.11,"g":532.1,"p":10.7,"i":61,"c":18,"d":58},{"r":263,"m":4936.67,"g":490.61,"p":9.9,"i":75,"c":11,"d":63},{"r":212,"m":4667.51,"g":686.9,"p":14.7,"i":24,"c":6,"d":23},{"r":208,"m":4199.6,"g":181.06,"p":4.3,"i":38,"c":11,"d":37},{"r":292,"m":3405.76,"g":590.47,"p":17.3,"i":12,"c":3,"d":11},{"r":261,"m":3343.68,"g":1424.96,"p":42.6,"i":7,"c":4,"d":7},{"r":260,"m":2677.35,"g":1436.02,"p":53.6,"i":3,"c":2,"d":3},{"r":250,"m":2596.06,"g":661.48,"p":25.5,"i":7,"c":2,"d":7},{"r":251,"m":2274.08,"g":331.35,"p":14.6,"i":41,"c":10,"d":38},{"r":203,"m":1892.42,"g":378.87,"p":20.0,"i":21,"c":10,"d":20},{"r":252,"m":1736.58,"g":540.31,"p":31.1,"i":15,"c":6,"d":13},{"r":241,"m":1620.3,"g":217.15,"p":13.4,"i":3,"c":1,"d":3},{"r":218,"m":880.05,"g":53.78,"p":6.1,"i":15,"c":5,"d":14},{"r":258,"m":756.43,"g":55.76,"p":7.4,"i":14,"c":1,"d":14},{"r":204,"m":328.21,"g":60.08,"p":18.3,"i":2,"c":1,"d":2},{"r":202,"m":275.96,"g":8.58,"p":3.1,"i":3,"c":2,"d":3},{"r":205,"m":252,"g":66,"p":26.2,"i":2,"c":1,"d":2},{"r":255,"m":219.7,"g":10.56,"p":4.8,"i":1,"c":1,"d":1}];
+
+const TOTAL_MDSE=REPS.reduce((s,r)=>s+r.m,0);
+const TOTAL_GP=REPS.reduce((s,r)=>s+r.g,0);
+const TOTAL_INV=REPS.reduce((s,r)=>s+r.i,0);
+const AVG_GP_PCT=TOTAL_GP/TOTAL_MDSE*100;
+
+const CUST_BUCKETS=[
+  {label:'1 Customer',min:1,max:1},
+  {label:'2\u201310',min:2,max:10},
+  {label:'11\u201350',min:11,max:50},
+  {label:'51\u2013150',min:51,max:150},
+  {label:'150+',min:151,max:Infinity}
+];
+const BUCKET_COLORS_D=['#6b7f99','#58a6ff','#7ee787','#f0883e','#f778ba'];
+const BUCKET_COLORS_L=['#8b949e','#1a73e8','#1e8a4a','#c0651a','#c4387a'];
+
+let dark=document.documentElement.getAttribute('data-theme')==='dark';
+function toggleDark(){
+  dark=!dark;
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  cssCache=null;
+  requestDraw();
+}
+
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const wrap=document.getElementById('wrap');
+const resetBtn=document.getElementById('resetBtn');
+
+let hoveredId=null,pinnedCards=[],drawRAF=null,cssCache=null;
+
+function isDark(){return dark}
+function pal(){return isDark()?BUCKET_COLORS_D:BUCKET_COLORS_L}
+function bucketIdx(c){
+  for(let i=0;i<CUST_BUCKETS.length;i++) if(c>=CUST_BUCKETS[i].min&&c<=CUST_BUCKETS[i].max) return i;
+  return CUST_BUCKETS.length-1;
+}
+function pinned(id){return pinnedCards.some(p=>p.id===id)}
+
+function fmtDollar(v){
+  const neg=v<0,a=Math.abs(v);
+  let s;
+  if(a>=1e6) s='$'+(a/1e6).toFixed(1)+'M';
+  else if(a>=1e3) s='$'+(a/1e3).toFixed(1)+'K';
+  else s='$'+a.toFixed(0);
+  return neg?'\u2212'+s:s;
+}
+function fmtDollarFull(v){
+  const neg=v<0,a=Math.abs(v);
+  return (neg?'\u2212$':'$')+a.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtPct(v){return v.toFixed(1)+'%'}
+function fmtInt(v){return v.toLocaleString('en-US')}
+
+function getCSSVars(){
+  if(cssCache) return cssCache;
+  const s=getComputedStyle(document.documentElement);
+  cssCache={
+    border:s.getPropertyValue('--chart-border').trim(),
+    muted:s.getPropertyValue('--text-muted').trim(),
+    zero:s.getPropertyValue('--zero').trim()
+  };
+  return cssCache;
+}
+
+let cachedLayout=null;
+function computeLayout(W,H){
+  if(cachedLayout&&cachedLayout.W===W&&cachedLayout.H===H) return cachedLayout;
+  const pL=64,pR=20,pT=16,pB=44;
+  const plotW=W-pL-pR,plotH=H-pT-pB;
+  const mVals=REPS.map(r=>r.m);
+  const xMin=Math.pow(10,Math.floor(Math.log10(Math.max(1,Math.min(...mVals)))));
+  const rawLogMax=Math.log10(Math.max(...mVals));
+  const logFrac=rawLogMax-Math.floor(rawLogMax);
+  const xMax=logFrac<0.5
+    ?Math.pow(10,Math.floor(rawLogMax)+0.5)
+    :Math.pow(10,Math.floor(rawLogMax)+1);
+  const pVals=REPS.map(r=>r.p),yPad=5;
+  const yMin=Math.floor(Math.min(...pVals)/5)*5-yPad;
+  const yMax=Math.ceil(Math.max(...pVals)/5)*5+yPad;
+  const iMax=Math.max(...REPS.map(r=>r.i));
+  const rMin=4,rMax=Math.min(36,Math.floor(Math.min(plotW,plotH)*0.06));
+  const logXMin=Math.log10(xMin),logXMax=Math.log10(xMax),logXRange=logXMax-logXMin;
+  function xOf(m){return pL+plotW*(Math.log10(Math.max(1,m))-logXMin)/logXRange}
+  function yOf(p){return pT+plotH*(1-(p-yMin)/(yMax-yMin))}
+  function rOf(i){return rMin+Math.sqrt(i/iMax)*(rMax-rMin)}
+  cachedLayout={pL,pR,pT,pB,plotW,plotH,xMin,xMax,yMin,yMax,iMax,rMin,rMax,xOf,yOf,rOf,W,H};
+  return cachedLayout;
+}
+
+let bubbles=[];
+function buildBubbles(lo){
+  const cols=pal();
+  bubbles=REPS.map(rep=>{
+    const bi=bucketIdx(rep.c);
+    return {rep,id:rep.r+'_'+rep.m,x:lo.xOf(rep.m),y:lo.yOf(rep.p),r:lo.rOf(rep.i),bi,color:cols[bi]};
+  });
+}
+
+function nearest(mx,my){
+  let best=null,bestD=Infinity;
+  for(const b of bubbles){
+    const dx=mx-b.x,dy=my-b.y,d=Math.sqrt(dx*dx+dy*dy);
+    const maxR=Math.max(b.r+20,40);
+    if(d<maxR&&d<bestD){bestD=d;best=b;}
+  }
+  return best;
+}
+
+function mkOverlay(cursor){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;cursor:'+cursor;
+  document.body.appendChild(ov);
+  return ov;
+}
+
+function createPinnedCard(id){
+  const el=document.createElement('div');
+  el.className='info-card';
+  el.setAttribute('data-id',id);
+  el.innerHTML='<div class="ic-accent"></div>'+
+    '<div class="ic-handle ic-handle-tl" data-corner="tl"></div><div class="ic-handle ic-handle-tr" data-corner="tr"></div>'+
+    '<div class="ic-handle ic-handle-bl" data-corner="bl"></div><div class="ic-handle ic-handle-br" data-corner="br"></div>'+
+    '<div class="ic-handle ic-handle-t" data-corner="t"></div><div class="ic-handle ic-handle-b" data-corner="b"></div>'+
+    '<div class="ic-handle ic-handle-l" data-corner="l"></div><div class="ic-handle ic-handle-r" data-corner="r"></div>'+
+    '<div class="info-card-inner">'+
+    '<div class="info-card-header"><span class="info-card-title"></span><span class="info-card-close">&times;</span></div>'+
+    '<div class="ic-body"></div></div>';
+  wrap.appendChild(el);
+  el.querySelector('.info-card-close').addEventListener('click',e=>{e.stopPropagation();unpinCard(id);});
+
+  // Single mousedown handler — dispatches to resize (if on handle) or move (if anywhere else)
+  el.addEventListener('mousedown',e=>{
+    // Ignore close button clicks entirely
+    if(e.target.classList.contains('info-card-close')) return;
+    e.preventDefault();
+    const cr=el.getBoundingClientRect();
+    const handle=e.target.closest('.ic-handle');
+
+    if(handle){
+      // RESIZE
+      const cn=handle.dataset.corner;
+      const sx=e.clientX,sy=e.clientY;
+      const sw=cr.width,sh=cr.height;
+      const sl=parseInt(el.style.left)||0,st=parseInt(el.style.top)||0;
+      const mW=180,mH=100;
+      const cm={tl:'nwse-resize',tr:'nesw-resize',bl:'nesw-resize',br:'nwse-resize',t:'ns-resize',b:'ns-resize',l:'ew-resize',r:'ew-resize'};
+      const ov=mkOverlay(cm[cn]||'default');
+      ov.addEventListener('mousemove',e2=>{
+        const dx=e2.clientX-sx,dy=e2.clientY-sy;
+        let nw,nh;
+        if(cn==='br'){el.style.width=Math.max(mW,sw+dx)+'px';el.style.height=Math.max(mH,sh+dy)+'px';}
+        else if(cn==='bl'){nw=Math.max(mW,sw-dx);el.style.width=nw+'px';el.style.left=(sl+(sw-nw))+'px';el.style.height=Math.max(mH,sh+dy)+'px';}
+        else if(cn==='tr'){el.style.width=Math.max(mW,sw+dx)+'px';nh=Math.max(mH,sh-dy);el.style.height=nh+'px';el.style.top=(st+(sh-nh))+'px';}
+        else if(cn==='tl'){nw=Math.max(mW,sw-dx);nh=Math.max(mH,sh-dy);el.style.width=nw+'px';el.style.left=(sl+(sw-nw))+'px';el.style.height=nh+'px';el.style.top=(st+(sh-nh))+'px';}
+        else if(cn==='r'){el.style.width=Math.max(mW,sw+dx)+'px';}
+        else if(cn==='l'){nw=Math.max(mW,sw-dx);el.style.width=nw+'px';el.style.left=(sl+(sw-nw))+'px';}
+        else if(cn==='b'){el.style.height=Math.max(mH,sh+dy)+'px';}
+        else if(cn==='t'){nh=Math.max(mH,sh-dy);el.style.height=nh+'px';el.style.top=(st+(sh-nh))+'px';}
+      });
+      ov.addEventListener('mouseup',()=>{ov.remove();},{once:true});
+      return;
+    }
+
+    // MOVE — anywhere on the card body that isn't a handle or close button
+    const ox=e.clientX,oy=e.clientY;
+    const sl2=parseInt(el.style.left)||0,st2=parseInt(el.style.top)||0;
+    const ov=mkOverlay('move');
+    ov.addEventListener('mousemove',e2=>{
+      el.style.left=(sl2+e2.clientX-ox)+'px';
+      el.style.top=(st2+e2.clientY-oy)+'px';
+    });
+    ov.addEventListener('mouseup',()=>{ov.remove();},{once:true});
+  });
+
+  return el;
+}
+
+let hoverEl=null;
+function ensureHoverCard(){
+  if(hoverEl) return hoverEl;
+  hoverEl=document.createElement('div');
+  hoverEl.className='info-card';
+  hoverEl.setAttribute('data-id','__hover');
+  hoverEl.innerHTML='<div class="ic-accent"></div><div class="info-card-inner">'+
+    '<div class="info-card-header"><span class="info-card-title"></span></div>'+
+    '<div class="ic-body"></div></div>';
+  wrap.appendChild(hoverEl);
+  return hoverEl;
+}
+
+function populateCard(el,b,isPinned){
+  const rep=b.rep,cols=pal();
+  el.querySelector('.ic-accent').style.background=cols[b.bi];
+  el.querySelector('.info-card-title').textContent='Rep '+rep.r;
+  const gc=rep.p>=0?'ic-gp-pos':'ic-gp-neg';
+  el.querySelector('.ic-body').innerHTML=
+    `<div class="ic-row"><span class="ic-label">Total MDSE</span><span class="ic-value">${fmtDollarFull(rep.m)}</span></div>`+
+    `<div class="ic-row"><span class="ic-label">Gross Profit</span><span class="ic-value ${gc}">${fmtDollarFull(rep.g)}</span></div>`+
+    `<div class="ic-row"><span class="ic-label">GP %</span><span class="ic-value ${gc}">${fmtPct(rep.p)}</span></div>`+
+    `<div class="ic-row"><span class="ic-label">Invoices</span><span class="ic-value">${fmtInt(rep.i)}</span></div>`+
+    `<div class="ic-row"><span class="ic-label">Customers</span><span class="ic-value">${fmtInt(rep.c)}</span></div>`+
+    `<div class="ic-row"><span class="ic-label">Active Days</span><span class="ic-value">${fmtInt(rep.d)} / 372</span></div>`;
+  if(isPinned){el.classList.add('pinned');el.classList.remove('visible');}
+  else{el.classList.add('visible');el.classList.remove('pinned');}
+}
+
+function positionCard(el,b){
+  const wr=wrap.getBoundingClientRect();
+  let cx=b.x+b.r+12,cy=b.y-60;
+  const cw=260,ch=200;
+  if(cx+cw>wr.width) cx=b.x-b.r-cw-12;
+  if(cy<0) cy=4;
+  if(cy+ch>wr.height) cy=wr.height-ch-4;
+  el.style.left=cx+'px';el.style.top=cy+'px';
+}
+
+function pinCard(b){
+  if(pinned(b.id)) return;
+  const el=createPinnedCard(b.id);
+  populateCard(el,b,true);positionCard(el,b);
+  pinnedCards.push({id:b.id,el});updateResetBtn();requestDraw();
+}
+function unpinCard(id){
+  const idx=pinnedCards.findIndex(p=>p.id===id);
+  if(idx>=0){pinnedCards[idx].el.remove();pinnedCards.splice(idx,1);updateResetBtn();requestDraw();}
+}
+function showHoverCard(b){const el=ensureHoverCard();populateCard(el,b,false);positionCard(el,b);}
+function hideHoverCard(){if(hoverEl) hoverEl.classList.remove('visible');}
+
+function updateResetBtn(){
+  const n=pinnedCards.length;
+  if(n>0){resetBtn.classList.add('visible','has-pins');resetBtn.innerHTML='&#8634; Reset ('+n+')';}
+  else{resetBtn.classList.remove('visible','has-pins');}
+}
+function resetAll(){
+  pinnedCards.forEach(p=>p.el.remove());pinnedCards=[];
+  hoveredId=null;hideHoverCard();updateResetBtn();requestDraw();
+}
+
+function requestDraw(){
+  if(drawRAF) return;
+  drawRAF=requestAnimationFrame(()=>{drawRAF=null;draw();});
+}
+
+function buildSummary(){
+  document.getElementById('summaryRow').innerHTML=
+    `<div class="stat-card"><div class="stat-label">Total MDSE</div><div class="stat-value">${fmtDollar(TOTAL_MDSE)}</div><div class="stat-sub">365-day period</div></div>`+
+    `<div class="stat-card"><div class="stat-label">Total GP</div><div class="stat-value">${fmtDollar(TOTAL_GP)}</div><div class="stat-sub">${fmtPct(AVG_GP_PCT)} blended</div></div>`+
+    `<div class="stat-card"><div class="stat-label">Sales Reps</div><div class="stat-value">${REPS.length}</div><div class="stat-sub">${REPS.filter(r=>r.d>=30).length} active 30+ days</div></div>`+
+    `<div class="stat-card"><div class="stat-label">Total Invoices</div><div class="stat-value">${fmtInt(TOTAL_INV)}</div><div class="stat-sub">across all reps</div></div>`;
+}
+
+function draw(){
+  const DPR=window.devicePixelRatio||1;
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  if(W<=0||H<=0) return;
+  canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const lo=computeLayout(W,H);
+  buildBubbles(lo);
+  const css=getCSSVars();
+  ctx.clearRect(0,0,W,H);
+
+  // Y grid
+  const yStep=lo.yMax-lo.yMin>60?10:5;
+  for(let v=Math.ceil(lo.yMin/yStep)*yStep;v<=lo.yMax;v+=yStep){
+    const y=lo.yOf(v);
+    ctx.strokeStyle=css.border;ctx.lineWidth=1;ctx.globalAlpha=v===0?0.6:0.3;
+    ctx.setLineDash(v===0?[]:[4,3]);
+    ctx.beginPath();ctx.moveTo(lo.pL,y);ctx.lineTo(W-lo.pR,y);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha=1;ctx.fillStyle=css.muted;
+    ctx.font='600 10px Inter,sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+    ctx.fillText(v+'%',lo.pL-8,y);
+  }
+
+  // X grid (log)
+  const logMin=Math.log10(lo.xMin),logMax=Math.log10(lo.xMax);
+  const xOrders=[];
+  for(let e=Math.floor(logMin);e<=Math.ceil(logMax);e++){
+    const v=Math.pow(10,e);if(v>=lo.xMin&&v<=lo.xMax) xOrders.push(v);
+  }
+  const xMinor=[];
+  for(let e=Math.floor(logMin);e<Math.ceil(logMax);e++){
+    [2,3,5].forEach(m=>{const v=m*Math.pow(10,e);if(v>lo.xMin&&v<lo.xMax) xMinor.push(v);});
+  }
+  ctx.strokeStyle=css.border;ctx.lineWidth=1;ctx.globalAlpha=0.15;
+  xMinor.forEach(v=>{const x=lo.xOf(v);ctx.beginPath();ctx.moveTo(x,lo.pT);ctx.lineTo(x,lo.pT+lo.plotH);ctx.stroke();});
+  ctx.globalAlpha=0.3;
+  xOrders.forEach(v=>{
+    const x=lo.xOf(v);
+    ctx.beginPath();ctx.moveTo(x,lo.pT);ctx.lineTo(x,lo.pT+lo.plotH+6);ctx.stroke();
+    ctx.globalAlpha=1;ctx.fillStyle=css.muted;
+    ctx.font='600 10px Inter,sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(fmtDollar(v),x,lo.pT+lo.plotH+10);
+    ctx.globalAlpha=0.3;
+  });
+
+  // Axes
+  ctx.strokeStyle=css.border;ctx.lineWidth=1.5;ctx.globalAlpha=0.6;
+  ctx.beginPath();ctx.moveTo(lo.pL,lo.pT);ctx.lineTo(lo.pL,lo.pT+lo.plotH);ctx.lineTo(W-lo.pR,lo.pT+lo.plotH);ctx.stroke();
+  ctx.globalAlpha=1;
+
+  // Zero line
+  if(lo.yMin<0){
+    const zy=lo.yOf(0);
+    ctx.strokeStyle=css.zero;ctx.lineWidth=1.5;ctx.globalAlpha=0.5;
+    ctx.beginPath();ctx.moveTo(lo.pL,zy);ctx.lineTo(W-lo.pR,zy);ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
+  // Draw order
+  const hasActive=pinnedCards.length>0||hoveredId!==null;
+  const drawOrder=bubbles.slice().sort((a,b)=>{
+    const ap=pinned(a.id)?2:a.id===hoveredId?1:0;
+    const bp=pinned(b.id)?2:b.id===hoveredId?1:0;
+    if(ap!==bp) return ap-bp;
+    return b.r-a.r;
+  });
+
+  drawOrder.forEach(b=>{
+    const isActive=pinned(b.id)||b.id===hoveredId;
+    const col=b.color;
+    let alpha=hasActive?(isActive?1:0.2):0.85;
+
+    if(isActive&&isDark()){
+      ctx.save();ctx.shadowColor=col;ctx.shadowBlur=14;
+      ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.globalAlpha=alpha;
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
+    if(isActive&&!isDark()){
+      ctx.save();ctx.globalAlpha=0.15;ctx.fillStyle=col;
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r+6,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+    if(isDark()){ctx.strokeStyle='rgba(13,17,23,0.7)';ctx.lineWidth=isActive?3:2;ctx.stroke();}
+    ctx.strokeStyle=col;ctx.lineWidth=isActive?2.5:1.2;ctx.stroke();
+    ctx.restore();
+
+    if(pinned(b.id)){
+      ctx.save();ctx.strokeStyle=isDark()?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.25)';
+      ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.r+2,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
+
+    if(b.r>18){
+      ctx.save();ctx.globalAlpha=alpha;
+      const lblColor=isDark()?'rgba(255,255,255,0.95)':'rgba(0,0,0,0.85)';
+      const outColor=isDark()?'rgba(0,0,0,0.6)':'rgba(255,255,255,0.7)';
+      ctx.fillStyle=lblColor;
+      ctx.font='700 '+(b.r>28?11:9)+'px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.strokeStyle=outColor;ctx.lineWidth=3;ctx.lineJoin='round';
+      ctx.strokeText(String(b.rep.r),b.x,b.y);
+      ctx.fillText(String(b.rep.r),b.x,b.y);
+      ctx.restore();
+    }
+
+    if(isActive&&b.r<=18){
+      ctx.save();ctx.globalAlpha=1;
+      ctx.fillStyle=col;ctx.font='600 10px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillText(String(b.rep.r),b.x,b.y-b.r-4);
+      ctx.restore();
+    }
+  });
+}
+
+// Events
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const b=nearest(mx,my);
+  // Clear previous highlights
+  pinnedCards.forEach(p=>p.el.classList.remove('highlight'));
+  if(b&&!pinned(b.id)){
+    hoveredId=b.id;canvas.style.cursor='pointer';showHoverCard(b);
+  } else {
+    canvas.style.cursor=(b&&pinned(b.id))?'pointer':'default';
+    hoveredId=null;hideHoverCard();
+    // Highlight the pinned card whose bubble is hovered
+    if(b&&pinned(b.id)){
+      const pc=pinnedCards.find(p=>p.id===b.id);
+      if(pc) pc.el.classList.add('highlight');
+    }
+  }
+  requestDraw();
+});
+canvas.addEventListener('click',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const b=nearest(mx,my);
+  if(b){if(pinned(b.id)) unpinCard(b.id); else{pinCard(b);hideHoverCard();}}
+});
+canvas.addEventListener('dblclick',resetAll);
+canvas.addEventListener('mouseleave',()=>{
+  hoveredId=null;hideHoverCard();
+  pinnedCards.forEach(p=>p.el.classList.remove('highlight'));
+  requestDraw();
+});
+
+function buildLegend(){
+  const leg=document.getElementById('legend');
+  const cols=pal();
+  const lo=computeLayout(wrap.clientWidth,wrap.clientHeight);
+  let html='<span class="legend-title">Customers</span>';
+  CUST_BUCKETS.forEach((b,i)=>{
+    html+=`<span class="legend-item"><span class="legend-dot" style="background:${cols[i]}"></span>${b.label}</span>`;
+  });
+  html+='<span class="size-legend"><span class="size-legend-title">Invoices</span>';
+  [100,1000,5000].forEach(v=>{
+    const sz=Math.round(lo.rOf(v)*2);
+    html+=`<span class="size-dot" style="width:${Math.max(6,sz)}px;height:${Math.max(6,sz)}px"></span><span class="size-label">${fmtInt(v)}</span>`;
+  });
+  html+='</span>';
+  leg.innerHTML=html;
+}
+
+function init(){buildSummary();buildLegend();draw();
+  setTimeout(()=>{document.querySelector('.widget').classList.remove('animating');},500);}
+let resizeTimer;
+window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{
+  cachedLayout=null;cssCache=null;buildLegend();requestDraw();},80);});
+
+const obs=new MutationObserver(()=>{
+  dark=document.documentElement.getAttribute('data-theme')==='dark';
+  cssCache=null;cachedLayout=null;buildSummary();buildLegend();
+  pinnedCards.forEach(pc=>{const b=bubbles.find(bb=>bb.id===pc.id);if(b) populateCard(pc.el,b,true);});
+  requestDraw();
+});
+obs.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+init();
+</script>
+</body>
+</html>
