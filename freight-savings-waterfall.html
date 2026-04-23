@@ -547,8 +547,65 @@ const DATA={"W2-23":{"totals":{"billed":5649.49,"paid":3188.48,"auditSvgs":1492.
       }
     ]
   }
+,
+  "W4-27": {
+    "totals": {
+      "billed": 1153.9,
+      "paid": 991.67,
+      "auditSvgs": 119.01,
+      "dupSvgs": 43.22,
+      "totalSvgs": 162.23,
+      "savingsRate": 14.1,
+      "bills": 3
+    },
+    "carriers": [
+      {
+        "id": "SAIA",
+        "billed": 1110.68,
+        "paid": 991.67,
+        "auditSvgs": 119.01,
+        "dupSvgs": 0
+      },
+      {
+        "id": "FEC*",
+        "billed": 43.22,
+        "paid": 0,
+        "auditSvgs": 0,
+        "dupSvgs": 43.22
+      }
+    ],
+    "items": [
+      {
+        "carr": "FEC*",
+        "pro": "920392707",
+        "paid": 0,
+        "billed": 43.22,
+        "auditSvgs": 0,
+        "dupSvgs": 43.22,
+        "desc": "DUPLICATE BILL"
+      },
+      {
+        "carr": "SAIA",
+        "pro": "10821984500",
+        "paid": 725.12,
+        "billed": 815.77,
+        "auditSvgs": 90.65,
+        "dupSvgs": 0,
+        "desc": "PER PRICING AGREEMENT FSC S/B 27.25"
+      },
+      {
+        "carr": "SAIA",
+        "pro": "10868390290",
+        "paid": 266.55,
+        "billed": 294.91,
+        "auditSvgs": 28.36,
+        "dupSvgs": 0,
+        "desc": "PER PRICING AGREEMENT FSC S/B 28.5%"
+      }
+    ]
+  }
 };
-const WEEKS=['W2-23','W3-2','W3-9','W3-16','W3-23','W3-30','W4-6','W4-13','W4-20'];
+const WEEKS=['W2-23','W3-2','W3-9','W3-16','W3-23','W3-30','W4-6','W4-13','W4-20','W4-27'];
 
 // Dynamic week button generation
 (function(){
